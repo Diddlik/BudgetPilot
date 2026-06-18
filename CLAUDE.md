@@ -4,12 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project state
 
-**Wave 0 (foundation) is done:** the layered solution `BudgetPilot.sln` exists,
-the `Domain` layer is complete, and the `Application` **contracts are frozen**
-(service interfaces, DTOs, requests, repository interfaces, `AddApplication()`).
-Service/repository bodies are `NotImplementedException` stubs filled by parallel
-tracks. The build is green. Specs are the source of truth: the original
-`BudgetPilot_Requirements.md` and the binding implementation spec
+**MVP is integrated on `main`:** all layers are implemented and merged — Domain
+rules + Application services/projection (Track A), EF Core/SQLite + migration +
+§12 seeding (Track B), Blazor UI for all screens (Track C). Full build is green,
+**57 tests pass**, and the app boots, migrates, seeds and serves. Docker
+(Dockerfile + compose, SQLite & Postgres) and PWA scaffolding (manifest + icons)
+exist. The Docker **image build** is unverified (daemon was offline) — run
+`docker compose up --build` to confirm. Specs are the source of truth: the
+original `BudgetPilot_Requirements.md` and the binding implementation spec
 `Docs/BudgetPilot – Technical Specification/requirements.md`. The parallel build
 plan is `Docs/IMPLEMENTATION_PLAN.md`.
 
