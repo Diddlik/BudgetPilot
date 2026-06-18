@@ -1,12 +1,15 @@
 using BudgetPilot.Application.Abstractions;
 using BudgetPilot.Application.Dtos;
+using BudgetPilot.Domain.Entities;
 using BudgetPilot.Domain.Enums;
+using BudgetPilot.Domain.Rules;
 
 namespace BudgetPilot.Application.Services;
 
 /// <summary>
-/// STUB (Wave 0). Implementierung der Projektionsregeln (requirements.md §5) folgt in Track A.
-/// Verträge eingefroren — nur Methoden-Bodies füllen.
+/// Erzeugt deterministische Monats- und Jahresprojektionen (requirements.md §5).
+/// Lädt Items inkl. Versionen EINMAL und berechnet die 12 Monate einer Jahresübersicht
+/// auf derselben in-memory Datenbasis (kein N+1, §5.3).
 /// </summary>
 public sealed class BudgetProjectionService : IBudgetProjectionService
 {
@@ -17,11 +20,86 @@ public sealed class BudgetProjectionService : IBudgetProjectionService
         _items = items;
     }
 
-    public Task<MonthlyBudgetProjectionDto> GetMonthlyProjectionAsync(
+    public async Task<MonthlyBudgetProjectionDto> GetMonthlyProjectionAsync(
         int year, int month, BudgetViewMode viewMode, CancellationToken ct = default)
-        => throw new NotImplementedException("Track A: Monatsprojektion gemäß requirements.md §5.");
+    {
+        var items = await _items.GetAllWithVersionsAsync(ct).ConfigureAwait(false);
+        return BuildMonth(items, year, month, viewMode);
+    }
 
-    public Task<YearlyBudgetProjectionDto> GetYearlyProjectionAsync(
+    public async Task<YearlyBudgetProjectionDto> GetYearlyProjectionAsync(
         int year, BudgetViewMode viewMode, CancellationToken ct = default)
-        => throw new NotImplementedException("Track A: Jahresprojektion gemäß requirements.md §5.");
+    {
+        // Eine einzige Repo-Abfrage; 12 Monatsprojektionen auf derselben Datenbasis.
+        var items = await _items.GetAllWithVersionsAsync(ct).ConfigureAwait(false);
+
+        var result = new YearlyBudgetProjectionDto { Year = year, ViewMode = viewMode };
+        for (var m = 1; m <= 12; m++)
+        {
+            var monthDto = BuildMonth(items, year, m, viewMode);
+            result.Months.Add(monthDto);
+            result.TotalIncome += monthDto.TotalIncome;
+            result.TotalExpense += monthDto.TotalExpense;
+        }
+
+        result.Balance = result.TotalIncome - result.TotalExpense;
+        return result;
+    }
+
+    private static MonthlyBudgetProjectionDto BuildMonth(
+        IReadOnlyList<BudgetItem> items, int year, int month, BudgetViewMode viewMode)
+    {
+        var dto = new MonthlyBudgetProjectionDto { Year = year, Month = month, ViewMode = viewMode };
+
+        foreach (var item in items)
+        {
+            // Nur aktive Items fließen in die Projektion ein (§4.4 / Test §8.9).
+            if (!item.IsActive)
+                continue;
+
+            // §4.2 + §4.1.2: genau eine gültige Version (oder keine) je Monat.
+            var version = ProjectionRules.SelectValidVersion(item, year, month);
+            if (version is null)
+                continue;
+
+            var amount = ProjectionRules.ProjectedMonthlyAmount(version, year, month, viewMode, out var isDue);
+
+            var line = new BudgetProjectionLine
+            {
+                BudgetItemId = item.Id,
+                BudgetItemName = item.Name,
+                CategoryId = item.CategoryId,
+                CategoryName = item.Category?.Name ?? string.Empty,
+                Type = item.Type,
+                Frequency = version.Frequency,
+                Amount = version.Amount,
+                ProjectedMonthlyAmount = amount,
+                IsDue = isDue,
+                Note = version.Note
+            };
+            dto.Lines.Add(line);
+
+            if (item.Type == BudgetItemType.Income)
+                dto.TotalIncome += amount;
+            else
+                dto.TotalExpense += amount;
+        }
+
+        dto.Balance = dto.TotalIncome - dto.TotalExpense;
+
+        // §5.2: Ausgaben je Kategorie in der gewählten Sicht.
+        dto.Categories = dto.Lines
+            .Where(l => l.Type == BudgetItemType.Expense)
+            .GroupBy(l => (l.CategoryId, l.CategoryName))
+            .Select(g => new CategoryProjectionSummary
+            {
+                CategoryId = g.Key.CategoryId,
+                CategoryName = g.Key.CategoryName,
+                TotalAmount = g.Sum(l => l.ProjectedMonthlyAmount)
+            })
+            .OrderBy(c => c.CategoryName)
+            .ToList();
+
+        return dto;
+    }
 }
