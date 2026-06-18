@@ -1,0 +1,21 @@
+# Normalize line endings: Git stores LF, checks out native.
+* text=auto
+
+# Explicit text types
+*.cs        text diff=csharp
+*.csproj    text
+*.sln       text eol=crlf
+*.props     text
+*.targets   text
+*.json      text
+*.razor     text
+*.css       text
+*.md        text
+*.yml       text
+*.yaml      text
+
+# Binary
+*.png       binary
+*.jpg       binary
+*.ico       binary
+*.db        binary

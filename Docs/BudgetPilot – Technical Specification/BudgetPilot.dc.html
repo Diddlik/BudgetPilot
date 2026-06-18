@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing:border-box; }
+  html,body { margin:0; }
+  body { background:#E7E2D6; }
+</style>
+</helmet>
+
+<div style="width:max-content; min-width:100%; min-height:100vh; box-sizing:border-box; padding:56px 64px; background:#E7E2D6; font-family:'Plus Jakarta Sans',system-ui,sans-serif;">
+
+  <div style="display:flex; align-items:center; gap:14px; margin-bottom:38px;">
+    <div style="width:44px; height:44px; border-radius:13px; background:#C2410C; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; font-size:22px;">B</div>
+    <div>
+      <div style="font-weight:800; font-size:24px; color:#241F18; letter-spacing:-.02em;">BudgetPilot — Prototyp</div>
+      <div style="font-size:14px; color:#8C8475; font-weight:600;">Haushaltsbudget mit Versionierung · Budget- &amp; Cashflow-Sicht · Demo-Daten 2026</div>
+    </div>
+  </div>
+
+  <div style="display:flex; align-items:flex-start; gap:56px;">
+
+    <div style="flex:none;">
+      <div style="font-size:13px; font-weight:700; color:#8C8475; text-transform:uppercase; letter-spacing:.05em; margin-bottom:12px;">Desktop · responsive Web-App</div>
+      <div style="width:1180px; background:#fff; border-radius:16px; box-shadow:0 1px 3px rgba(0,0,0,.08),0 30px 60px rgba(60,48,28,.16); overflow:hidden; border:1px solid #DCD3C2;">
+        <div style="height:44px; background:#F1ECE2; border-bottom:1px solid #E3DACA; display:flex; align-items:center; gap:8px; padding:0 16px;">
+          <span style="width:12px; height:12px; border-radius:50%; background:#E5675A;"></span>
+          <span style="width:12px; height:12px; border-radius:50%; background:#E8B23F;"></span>
+          <span style="width:12px; height:12px; border-radius:50%; background:#5BB96B;"></span>
+          <div style="flex:1; display:flex; justify-content:center;">
+            <div style="background:#fff; border:1px solid #E3DACA; border-radius:8px; padding:5px 18px; font-size:12.5px; color:#8C8475; font-weight:600;">budgetpilot.local</div>
+          </div>
+        </div>
+        <div style="width:1180px; height:740px;">
+          <dc-import name="BudgetApp" mode="desktop" start="dashboard" style="display:block; width:1180px; height:740px;" hint-size="1180px,740px"></dc-import>
+        </div>
+      </div>
+    </div>
+
+    <div style="flex:none;">
+      <div style="font-size:13px; font-weight:700; color:#8C8475; text-transform:uppercase; letter-spacing:.05em; margin-bottom:12px;">Mobile · PWA</div>
+      <div style="width:412px; padding:14px; background:#19150F; border-radius:54px; box-shadow:0 1px 3px rgba(0,0,0,.08),0 30px 60px rgba(60,48,28,.22);">
+        <div style="position:relative; width:384px; height:812px; background:#F4EEE3; border-radius:42px; overflow:hidden;">
+          <div style="position:absolute; top:0; left:50%; transform:translateX(-50%); width:150px; height:30px; background:#19150F; border-radius:0 0 18px 18px; z-index:5;"></div>
+          <div style="width:384px; height:812px;">
+            <dc-import name="BudgetApp" mode="mobile" start="month" style="display:block; width:384px; height:812px;" hint-size="384px,812px"></dc-import>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

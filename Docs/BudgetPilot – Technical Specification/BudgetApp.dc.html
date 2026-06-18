@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  .bp-root {
+    --bg:#F4EEE3; --surface:#FFFFFF; --ink:#241F18; --muted:#8C8475; --soft:#B6AD9C;
+    --line:#EAE2D4; --accent:#C2410C; --accent-soft:#FBEADD; --pos:#1E7A4D; --pos-soft:#E4F0E7;
+    --neg:#B23A22; --neg-soft:#F8E6E0; --shadow:0 1px 2px rgba(60,48,28,.06),0 8px 24px rgba(60,48,28,.06);
+    font-family:'Plus Jakarta Sans',system-ui,sans-serif; color:var(--ink);
+    background:var(--bg); height:100%; width:100%; display:flex; overflow:hidden; position:relative;
+    -webkit-font-smoothing:antialiased; font-variant-numeric:tabular-nums;
+  }
+  .bp-num { font-variant-numeric:tabular-nums; }
+  .bp-side-btn { display:flex; align-items:center; gap:12px; width:100%; padding:11px 14px; border:none;
+    background:transparent; color:var(--muted); font:inherit; font-weight:600; font-size:14.5px; border-radius:12px;
+    cursor:pointer; text-align:left; transition:background .15s,color .15s; }
+  .bp-side-btn:hover { background:#EFE7D8; color:var(--ink); }
+  .bp-bot-btn { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; padding:8px 4px 6px;
+    border:none; background:transparent; color:var(--soft); font:inherit; font-size:11px; font-weight:600; cursor:pointer; }
+  .bp-scroll { flex:1; overflow-y:auto; overflow-x:hidden; }
+  .bp-scroll::-webkit-scrollbar { width:10px; }
+  .bp-scroll::-webkit-scrollbar-thumb { background:#E0D6C4; border-radius:8px; border:3px solid var(--bg); }
+  .bp-card { background:var(--surface); border:1px solid var(--line); border-radius:18px; box-shadow:var(--shadow); }
+  .bp-seg-btn { border:none; background:transparent; color:var(--muted); font:inherit; font-weight:700; font-size:13.5px;
+    padding:8px 16px; border-radius:9px; cursor:pointer; transition:.15s; }
+  .bp-row-hover:hover { background:#FBF7EF; }
+  .bp-pill { display:inline-flex; align-items:center; padding:3px 10px; border-radius:999px; font-size:11.5px; font-weight:700; letter-spacing:.01em; }
+  .bp-icon { width:18px; height:18px; flex:none; display:inline-block; }
+</style>
+</helmet>
+
+<div class="bp-root">
+
+  <sc-if value="{{ isDesktop }}" hint-placeholder-val="{{ true }}">
+    <aside style="width:236px; flex:none; background:#FBF8F2; border-right:1px solid var(--line); display:flex; flex-direction:column; padding:22px 16px;">
+      <div style="display:flex; align-items:center; gap:11px; padding:6px 8px 22px;">
+        <div style="width:34px; height:34px; border-radius:11px; background:var(--accent); display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; font-size:17px;">B</div>
+        <div>
+          <div style="font-weight:800; font-size:16px; letter-spacing:-.01em;">BudgetPilot</div>
+          <div style="font-size:11px; color:var(--soft); font-weight:600;">Haushaltsbudget</div>
+        </div>
+      </div>
+      <nav style="display:flex; flex-direction:column; gap:3px;">
+        <sc-for list="{{ navItems }}" as="n" hint-placeholder-count="5">
+          <button class="bp-side-btn" style="{{ n.style }}" onClick="{{ n.onClick }}">
+            <span class="bp-icon" style="{{ n.dotStyle }}"></span>{{ n.label }}
+          </button>
+        </sc-for>
+      </nav>
+      <div style="margin-top:auto; padding:14px; border-radius:14px; background:#F1E9DA;">
+        <div style="font-size:12px; font-weight:700; color:var(--muted);">Aktiver Zeitraum</div>
+        <div style="font-size:15px; font-weight:800; margin-top:2px;">{{ monthLabel }}</div>
+      </div>
+    </aside>
+  </sc-if>
+
+  <div style="flex:1; min-width:0; display:flex; flex-direction:column;">
+    <header style="flex:none; padding:18px 26px; border-bottom:1px solid var(--line); background:rgba(251,248,242,.7); backdrop-filter:blur(6px); display:flex; align-items:center; justify-content:space-between;">
+      <div>
+        <div style="font-weight:800; font-size:20px; letter-spacing:-.02em;">{{ screenTitle }}</div>
+        <div style="font-size:13px; color:var(--muted); font-weight:600;">{{ screenSubtitle }}</div>
+      </div>
+      <sc-if value="{{ isMobile }}" hint-placeholder-val="{{ true }}">
+        <div style="width:32px; height:32px; border-radius:10px; background:var(--accent); display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; font-size:15px;">B</div>
+      </sc-if>
+    </header>
+
+    <div class="bp-scroll">
+      <div style="padding:24px 26px 40px; max-width:980px; margin:0 auto;">
+
+        <sc-if value="{{ isDashboard }}" hint-placeholder-val="{{ true }}">
+          <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:14px;">
+            <div class="bp-card" style="padding:18px 20px;">
+              <div style="font-size:13px; font-weight:700; color:var(--muted);">Einnahmen</div>
+              <div class="bp-num" style="font-size:26px; font-weight:800; margin-top:6px; color:var(--pos);">{{ kpis.incomeLabel }}</div>
+            </div>
+            <div class="bp-card" style="padding:18px 20px;">
+              <div style="font-size:13px; font-weight:700; color:var(--muted);">Ausgaben</div>
+              <div class="bp-num" style="font-size:26px; font-weight:800; margin-top:6px;">{{ kpis.expenseLabel }}</div>
+            </div>
+            <div class="bp-card" style="padding:18px 20px; background:var(--ink); border-color:var(--ink);">
+              <div style="font-size:13px; font-weight:700; color:#C9BFAE;">Saldo · {{ monthLabel }}</div>
+              <div class="bp-num" style="font-size:26px; font-weight:800; margin-top:6px; color:{{ kpis.balColor }};">{{ kpis.balanceLabel }}</div>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(290px,1fr)); gap:16px; margin-top:16px;">
+            <div class="bp-card" style="padding:20px;">
+              <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:16px;">
+                <div style="font-weight:800; font-size:15px;">Ausgaben nach Kategorie</div>
+                <div style="font-size:12px; color:var(--soft); font-weight:700;">Budget-Sicht</div>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:14px;">
+                <sc-for list="{{ dash.catBars }}" as="c" hint-placeholder-count="5">
+                  <div>
+                    <div style="display:flex; justify-content:space-between; font-size:13.5px; font-weight:700; margin-bottom:6px;">
+                      <span>{{ c.name }}</span><span class="bp-num" style="color:var(--muted);">{{ c.amtLabel }}</span>
+                    </div>
+                    <div style="height:8px; background:#F0E8D9; border-radius:99px; overflow:hidden;">
+                      <div style="{{ c.barStyle }}; height:100%; background:var(--accent); border-radius:99px;"></div>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+
+            <div class="bp-card" style="padding:20px;">
+              <div style="font-weight:800; font-size:15px; margin-bottom:16px;">Nächste große Zahlungen</div>
+              <div style="display:flex; flex-direction:column; gap:4px;">
+                <sc-for list="{{ dash.upcoming }}" as="u" hint-placeholder-count="4">
+                  <div style="display:flex; align-items:center; gap:13px; padding:9px 8px; border-radius:12px;" class="bp-row-hover">
+                    <div style="width:42px; height:42px; flex:none; border-radius:12px; background:var(--accent-soft); color:var(--accent); display:flex; flex-direction:column; align-items:center; justify-content:center; line-height:1;">
+                      <span style="font-size:9px; font-weight:800; text-transform:uppercase;">{{ u.mon }}</span>
+                    </div>
+                    <div style="flex:1; min-width:0;">
+                      <div style="font-weight:700; font-size:14px;">{{ u.name }}</div>
+                      <div style="font-size:12px; color:var(--muted); font-weight:600;">{{ u.when }}</div>
+                    </div>
+                    <div class="bp-num" style="font-weight:800; font-size:14.5px;">{{ u.amtLabel }}</div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isMonth }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex; flex-wrap:wrap; align-items:center; gap:12px; justify-content:space-between; margin-bottom:18px;">
+            <div style="display:flex; align-items:center; gap:6px;">
+              <button onClick="{{ prevMonth }}" style="width:38px; height:38px; border-radius:11px; border:1px solid var(--line); background:#fff; cursor:pointer; font-size:18px; font-weight:700; color:var(--muted);">‹</button>
+              <div class="bp-num" style="min-width:150px; text-align:center; font-weight:800; font-size:17px;">{{ monthLabel }}</div>
+              <button onClick="{{ nextMonth }}" style="width:38px; height:38px; border-radius:11px; border:1px solid var(--line); background:#fff; cursor:pointer; font-size:18px; font-weight:700; color:var(--muted);">›</button>
+            </div>
+            <div style="display:flex; gap:3px; background:#EDE4D5; padding:4px; border-radius:12px;">
+              <button class="bp-seg-btn" style="{{ month.modeBudgetStyle }}" onClick="{{ setModeBudget }}">Budget-Sicht</button>
+              <button class="bp-seg-btn" style="{{ month.modeCashStyle }}" onClick="{{ setModeCashflow }}">Cashflow-Sicht</button>
+            </div>
+          </div>
+
+          <div style="font-size:12.5px; color:var(--muted); font-weight:600; background:#F1E9DA; border-radius:11px; padding:9px 14px; margin-bottom:16px;">{{ month.modeHint }}</div>
+
+          <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:14px; margin-bottom:18px;">
+            <div class="bp-card" style="padding:16px 18px;">
+              <div style="font-size:12.5px; font-weight:700; color:var(--muted);">Einnahmen</div>
+              <div class="bp-num" style="font-size:23px; font-weight:800; margin-top:4px; color:var(--pos);">{{ kpis.incomeLabel }}</div>
+            </div>
+            <div class="bp-card" style="padding:16px 18px;">
+              <div style="font-size:12.5px; font-weight:700; color:var(--muted);">Ausgaben</div>
+              <div class="bp-num" style="font-size:23px; font-weight:800; margin-top:4px;">{{ kpis.expenseLabel }}</div>
+            </div>
+            <div class="bp-card" style="padding:16px 18px; background:var(--ink); border-color:var(--ink);">
+              <div style="font-size:12.5px; font-weight:700; color:#C9BFAE;">Saldo</div>
+              <div class="bp-num" style="font-size:23px; font-weight:800; margin-top:4px; color:{{ kpis.balColor }};">{{ kpis.balanceLabel }}</div>
+            </div>
+          </div>
+
+          <div class="bp-card" style="padding:6px 20px 14px; margin-bottom:16px;">
+            <div style="display:flex; align-items:center; gap:8px; padding:14px 0 10px; border-bottom:1px solid var(--line);">
+              <span class="bp-pill" style="background:var(--pos-soft); color:var(--pos);">Einnahmen</span>
+            </div>
+            <sc-for list="{{ month.incLines }}" as="l" hint-placeholder-count="1">
+              <div style="display:flex; align-items:center; gap:12px; padding:13px 0; border-bottom:1px solid #F4EDDF;">
+                <div style="flex:1;"><div style="font-weight:700; font-size:14.5px;">{{ l.name }}</div><div style="font-size:12px; color:var(--muted); font-weight:600;">{{ l.freq }}</div></div>
+                <div class="bp-num" style="font-weight:800; font-size:15px; color:var(--pos);">{{ l.amtLabel }}</div>
+              </div>
+            </sc-for>
+          </div>
+
+          <sc-for list="{{ month.expGroups }}" as="g" hint-placeholder-count="4">
+            <div class="bp-card" style="padding:6px 20px 14px; margin-bottom:14px;">
+              <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 0 10px; border-bottom:1px solid var(--line);">
+                <span class="bp-pill" style="background:var(--accent-soft); color:var(--accent);">{{ g.cat }}</span>
+                <span class="bp-num" style="font-weight:800; font-size:14px;">{{ g.subLabel }}</span>
+              </div>
+              <sc-for list="{{ g.lines }}" as="l" hint-placeholder-count="2">
+                <div style="display:flex; align-items:center; gap:12px; padding:13px 0; border-bottom:1px solid #F4EDDF;">
+                  <div style="flex:1;">
+                    <div style="font-weight:700; font-size:14.5px;">{{ l.name }}</div>
+                    <div style="font-size:12px; color:var(--muted); font-weight:600;">{{ l.freq }}</div>
+                  </div>
+                  <span class="bp-pill" style="background:#F2EADC; color:var(--muted); {{ l.tagStyle }}">{{ l.tag }}</span>
+                  <div class="bp-num" style="font-weight:800; font-size:15px; min-width:84px; text-align:right; {{ l.amtStyle }}">{{ l.amtLabel }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </sc-for>
+        </sc-if>
+
+        <sc-if value="{{ isYear }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex; flex-wrap:wrap; align-items:center; gap:12px; justify-content:space-between; margin-bottom:18px;">
+            <div style="display:flex; align-items:center; gap:6px;">
+              <button onClick="{{ prevYear }}" style="width:38px; height:38px; border-radius:11px; border:1px solid var(--line); background:#fff; cursor:pointer; font-size:18px; font-weight:700; color:var(--muted);">‹</button>
+              <div class="bp-num" style="min-width:90px; text-align:center; font-weight:800; font-size:17px;">{{ yearLabel }}</div>
+              <button onClick="{{ nextYear }}" style="width:38px; height:38px; border-radius:11px; border:1px solid var(--line); background:#fff; cursor:pointer; font-size:18px; font-weight:700; color:var(--muted);">›</button>
+            </div>
+            <div style="display:flex; gap:3px; background:#EDE4D5; padding:4px; border-radius:12px;">
+              <button class="bp-seg-btn" style="{{ year.modeBudgetStyle }}" onClick="{{ setModeBudget }}">Budget-Sicht</button>
+              <button class="bp-seg-btn" style="{{ year.modeCashStyle }}" onClick="{{ setModeCashflow }}">Cashflow-Sicht</button>
+            </div>
+          </div>
+
+          <div class="bp-card" style="padding:22px 20px 16px; margin-bottom:16px;">
+            <div style="display:flex; gap:18px; margin-bottom:18px; flex-wrap:wrap;">
+              <div style="display:flex; align-items:center; gap:7px; font-size:12.5px; font-weight:700; color:var(--muted);"><span style="width:11px; height:11px; border-radius:3px; background:var(--pos);"></span>Einnahmen</div>
+              <div style="display:flex; align-items:center; gap:7px; font-size:12.5px; font-weight:700; color:var(--muted);"><span style="width:11px; height:11px; border-radius:3px; background:var(--accent);"></span>Ausgaben</div>
+            </div>
+            <div style="display:flex; align-items:flex-end; gap:2.5%; height:148px;">
+              <sc-for list="{{ year.months }}" as="mo" hint-placeholder-count="12">
+                <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:6px; height:100%; justify-content:flex-end;">
+                  <div style="display:flex; align-items:flex-end; gap:2px; height:118px; width:100%; justify-content:center;">
+                    <div style="{{ mo.incBar }}; width:42%; max-width:13px; background:var(--pos); border-radius:4px 4px 0 0;"></div>
+                    <div style="{{ mo.expBar }}; width:42%; max-width:13px; background:var(--accent); border-radius:4px 4px 0 0;"></div>
+                  </div>
+                  <div style="font-size:10.5px; font-weight:700; color:var(--muted);">{{ mo.short }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:14px; margin-bottom:16px;">
+            <div class="bp-card" style="padding:16px 18px;"><div style="font-size:12.5px; font-weight:700; color:var(--muted);">Einnahmen {{ yearLabel }}</div><div class="bp-num" style="font-size:22px; font-weight:800; margin-top:4px; color:var(--pos);">{{ year.incLabel }}</div></div>
+            <div class="bp-card" style="padding:16px 18px;"><div style="font-size:12.5px; font-weight:700; color:var(--muted);">Ausgaben {{ yearLabel }}</div><div class="bp-num" style="font-size:22px; font-weight:800; margin-top:4px;">{{ year.expLabel }}</div></div>
+            <div class="bp-card" style="padding:16px 18px; background:var(--ink); border-color:var(--ink);"><div style="font-size:12.5px; font-weight:700; color:#C9BFAE;">Jahressaldo</div><div class="bp-num" style="font-size:22px; font-weight:800; margin-top:4px; color:{{ year.balColor }};">{{ year.balLabel }}</div></div>
+          </div>
+
+          <div class="bp-card" style="padding:6px 20px 12px;">
+            <div style="display:flex; padding:13px 0 9px; border-bottom:1px solid var(--line); font-size:11.5px; font-weight:800; color:var(--soft); text-transform:uppercase; letter-spacing:.04em;">
+              <div style="flex:1;">Monat</div><div style="width:33%; text-align:right;">Einnahmen</div><div style="width:33%; text-align:right;">Ausgaben</div><div style="width:33%; text-align:right;">Saldo</div>
+            </div>
+            <sc-for list="{{ year.months }}" as="mo" hint-placeholder-count="12">
+              <div style="display:flex; align-items:center; padding:10px 8px; border-bottom:1px solid #F4EDDF; border-radius:8px; {{ mo.rowStyle }}">
+                <div style="flex:1; font-weight:700; font-size:13.5px;">{{ mo.short }}</div>
+                <div class="bp-num" style="width:33%; text-align:right; font-size:13.5px; color:var(--pos); font-weight:600;">{{ mo.incLabel }}</div>
+                <div class="bp-num" style="width:33%; text-align:right; font-size:13.5px; font-weight:600;">{{ mo.expLabel }}</div>
+                <div class="bp-num" style="width:33%; text-align:right; font-size:13.5px; font-weight:800; {{ mo.balStyle }}">{{ mo.balLabel }}</div>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isPositions }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px;">
+            <div style="font-size:13px; color:var(--muted); font-weight:600;">Tippe auf eine Position, um sie zu bearbeiten.</div>
+            <button onClick="{{ openCreate }}" style="border:none; background:var(--accent); color:#fff; font:inherit; font-weight:700; font-size:13.5px; padding:10px 16px; border-radius:11px; cursor:pointer; flex:none; white-space:nowrap;">+ Neue Ausgabe</button>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:10px;">
+            <sc-for list="{{ positions }}" as="p" hint-placeholder-count="8">
+              <button class="bp-card bp-row-hover" style="padding:15px 18px; display:flex; align-items:center; gap:14px; text-align:left; cursor:pointer; font:inherit; {{ p.rowStyle }}" onClick="{{ p.onClick }}">
+                <div style="flex:1; min-width:0;">
+                  <div style="display:flex; align-items:center; gap:9px; flex-wrap:wrap;">
+                    <span style="font-weight:800; font-size:15.5px;">{{ p.name }}</span>
+                    <span class="bp-pill" style="{{ p.statusStyle }}">{{ p.statusLabel }}</span>
+                  </div>
+                  <div style="display:flex; align-items:center; gap:8px; margin-top:5px; font-size:12.5px; color:var(--muted); font-weight:600;">
+                    <span>{{ p.cat }}</span><span style="color:var(--soft);">·</span><span>{{ p.freq }}</span><span style="color:var(--soft);">·</span><span>{{ p.verLabel }}</span>
+                  </div>
+                </div>
+                <div style="text-align:right;">
+                  <span class="bp-pill" style="{{ p.typeStyle }}">{{ p.typeLabel }}</span>
+                  <div class="bp-num" style="font-weight:800; font-size:16px; margin-top:6px;">{{ p.amtLabel }}</div>
+                </div>
+                <span style="color:var(--soft); font-size:20px; font-weight:700;">›</span>
+              </button>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isDetail }}" hint-placeholder-val="{{ true }}">
+          <button onClick="{{ goDetailBack }}" style="border:none; background:transparent; color:var(--muted); font:inherit; font-weight:700; font-size:13.5px; cursor:pointer; padding:0; margin-bottom:14px;">‹ Zurück</button>
+
+          <div class="bp-card" style="padding:22px; margin-bottom:16px;">
+            <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:14px; flex-wrap:wrap;">
+              <div>
+                <div style="display:flex; align-items:center; gap:11px; flex-wrap:wrap;">
+                  <div style="font-size:22px; font-weight:800; letter-spacing:-.02em;">{{ detail.name }}</div>
+                  <span class="bp-pill" style="{{ detail.typeStyle }}">{{ detail.typeLabel }}</span>
+                  <span class="bp-pill" style="{{ detail.statusStyle }}">{{ detail.statusLabel }}</span>
+                </div>
+                <div style="font-size:13px; color:var(--muted); font-weight:600; margin-top:6px;">Kategorie · {{ detail.cat }}</div>
+              </div>
+              <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <button onClick="{{ detail.onEdit }}" style="border:1px solid var(--line); background:#fff; color:var(--ink); font:inherit; font-weight:700; font-size:13px; padding:9px 14px; border-radius:10px; cursor:pointer;">Bearbeiten</button>
+                <button onClick="{{ detail.onToggle }}" style="border:1px solid var(--line); background:#fff; color:var(--muted); font:inherit; font-weight:700; font-size:13px; padding:9px 14px; border-radius:10px; cursor:pointer;">{{ detail.toggleLabel }}</button>
+                <button onClick="{{ detail.onDelete }}" style="border:1px solid var(--neg-soft); background:var(--neg-soft); color:var(--neg); font:inherit; font-weight:700; font-size:13px; padding:9px 14px; border-radius:10px; cursor:pointer;">Löschen</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="bp-card" style="padding:18px 20px; margin-bottom:16px; background:#FBF3E6; border-color:#EAD9BC;">
+            <div style="font-weight:800; font-size:14.5px; margin-bottom:4px;">Betrag ab einem Datum ändern</div>
+            <div style="font-size:12.5px; color:var(--muted); font-weight:600; margin-bottom:14px;">Historische Monate bleiben unverändert. Standard ist eine neue Version ab gewähltem Datum.</div>
+            <div style="display:flex; flex-direction:column; gap:8px;">
+              <div style="display:flex; align-items:center; gap:11px; background:#fff; border:2px solid var(--accent); border-radius:12px; padding:12px 14px;">
+                <span style="width:18px; height:18px; border-radius:50%; border:5px solid var(--accent); flex:none;"></span>
+                <div><div style="font-weight:700; font-size:14px;">Neue Version ab Datum erstellen</div><div style="font-size:11.5px; color:var(--muted); font-weight:600;">Empfohlen · sicher</div></div>
+              </div>
+              <div style="display:flex; align-items:center; gap:11px; background:#fff; border:1px solid var(--line); border-radius:12px; padding:12px 14px;">
+                <span style="width:18px; height:18px; border-radius:50%; border:2px solid #D8CDB9; flex:none;"></span>
+                <div><div style="font-weight:700; font-size:14px; color:var(--muted);">Aktuelle Version rückwirkend ändern</div><div style="font-size:11.5px; color:var(--soft); font-weight:600;">Ändert auch vergangene Monate</div></div>
+              </div>
+            </div>
+            <button onClick="{{ detail.onVersion }}" style="margin-top:14px; border:none; background:var(--accent); color:#fff; font:inherit; font-weight:700; font-size:13.5px; padding:10px 18px; border-radius:11px; cursor:pointer;">Neue Version anlegen</button>
+          </div>
+
+          <div style="font-weight:800; font-size:15px; margin:0 4px 12px;">Versionshistorie</div>
+          <div style="display:flex; flex-direction:column; gap:0;">
+            <sc-for list="{{ detail.versions }}" as="v" hint-placeholder-count="2">
+              <div style="display:flex; gap:14px;">
+                <div style="display:flex; flex-direction:column; align-items:center; padding-top:4px;">
+                  <span style="width:14px; height:14px; border-radius:50%; {{ v.dotStyle }}; flex:none; border:3px solid var(--bg);"></span>
+                  <span style="flex:1; width:2px; background:var(--line); min-height:18px;"></span>
+                </div>
+                <div class="bp-card" style="flex:1; padding:16px 18px; margin-bottom:12px;">
+                  <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+                    <div style="display:flex; align-items:center; gap:9px;">
+                      <span class="bp-num" style="font-weight:800; font-size:18px;">{{ v.amtLabel }}</span>
+                      <span style="font-size:12.5px; color:var(--muted); font-weight:700;">{{ v.freq }}</span>
+                    </div>
+                    <span class="bp-pill" style="{{ v.badgeStyle }}">{{ v.badge }}</span>
+                  </div>
+                  <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:10px 16px; margin-top:12px;">
+                    <div><div style="font-size:11px; color:var(--soft); font-weight:700; text-transform:uppercase; letter-spacing:.03em;">Gültig ab</div><div class="bp-num" style="font-size:13.5px; font-weight:700; margin-top:2px;">{{ v.from }}</div></div>
+                    <div><div style="font-size:11px; color:var(--soft); font-weight:700; text-transform:uppercase; letter-spacing:.03em;">Gültig bis</div><div class="bp-num" style="font-size:13.5px; font-weight:700; margin-top:2px;">{{ v.to }}</div></div>
+                    <div><div style="font-size:11px; color:var(--soft); font-weight:700; text-transform:uppercase; letter-spacing:.03em;">Zahlung</div><div style="font-size:13.5px; font-weight:700; margin-top:2px;">{{ v.pay }}</div></div>
+                  </div>
+                  <div style="font-size:12.5px; color:var(--muted); font-weight:600; margin-top:10px; padding-top:10px; border-top:1px solid #F4EDDF;">{{ v.note }}</div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isCategories }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px;">
+            <div style="font-size:13px; color:var(--muted); font-weight:600;">Monatliche Budget-Summe je Kategorie ({{ monthLabel }}).</div>
+            <button onClick="{{ openCreate }}" style="border:none; background:var(--accent); color:#fff; font:inherit; font-weight:700; font-size:13.5px; padding:10px 16px; border-radius:11px; cursor:pointer; flex:none; white-space:nowrap;">+ Neue Ausgabe</button>
+          </div>
+          <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px;">
+            <sc-for list="{{ categories }}" as="c" hint-placeholder-count="6">
+              <button class="bp-card bp-row-hover" onClick="{{ c.onClick }}" style="padding:18px; text-align:left; font:inherit; cursor:pointer; display:block; width:100%;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                  <span style="width:12px; height:12px; border-radius:4px; {{ c.dotStyle }}; flex:none;"></span>
+                  <span style="font-weight:800; font-size:15.5px;">{{ c.name }}</span>
+                  <span style="margin-left:auto; color:var(--soft); font-size:18px; font-weight:700;">›</span>
+                </div>
+                <div style="display:flex; align-items:baseline; justify-content:space-between; margin-top:14px;">
+                  <span style="font-size:12.5px; color:var(--muted); font-weight:600;">{{ c.countLabel }}</span>
+                  <span class="bp-num" style="font-weight:800; font-size:17px;">{{ c.budgetLabel }}</span>
+                </div>
+              </button>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isCatView }}" hint-placeholder-val="{{ true }}">
+          <button onClick="{{ goPositions }}" style="border:none; background:transparent; color:var(--muted); font:inherit; font-weight:700; font-size:13.5px; cursor:pointer; padding:0; margin-bottom:14px;">‹ Alle Kategorien</button>
+
+          <div class="bp-card" style="padding:20px 22px; margin-bottom:16px; display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;">
+            <div>
+              <div style="font-size:21px; font-weight:800; letter-spacing:-.02em;">{{ catView.name }}</div>
+              <div style="font-size:12.5px; color:var(--muted); font-weight:600; margin-top:3px;">{{ catView.countLabel }} · Budget {{ catView.budgetLabel }} / Monat</div>
+            </div>
+            <button onClick="{{ catView.onAdd }}" style="border:none; background:var(--accent); color:#fff; font:inherit; font-weight:700; font-size:13.5px; padding:10px 16px; border-radius:11px; cursor:pointer; white-space:nowrap;">+ Ausgabe hinzufügen</button>
+          </div>
+
+          <sc-if value="{{ catView.isEmpty }}" hint-placeholder-val="{{ false }}">
+            <div class="bp-card" style="padding:34px; text-align:center; color:var(--muted); font-weight:600; font-size:14px;">Noch keine Positionen in dieser Kategorie.</div>
+          </sc-if>
+
+          <div style="display:flex; flex-direction:column; gap:10px;">
+            <sc-for list="{{ catView.lines }}" as="p" hint-placeholder-count="3">
+              <button class="bp-card bp-row-hover" style="padding:15px 18px; display:flex; align-items:center; gap:14px; text-align:left; cursor:pointer; font:inherit; {{ p.rowStyle }}" onClick="{{ p.onClick }}">
+                <div style="flex:1; min-width:0;">
+                  <div style="display:flex; align-items:center; gap:9px; flex-wrap:wrap;">
+                    <span style="font-weight:800; font-size:15.5px;">{{ p.name }}</span>
+                    <span class="bp-pill" style="{{ p.statusStyle }}">{{ p.statusLabel }}</span>
+                  </div>
+                  <div style="font-size:12.5px; color:var(--muted); font-weight:600; margin-top:5px;">{{ p.freq }}</div>
+                </div>
+                <div style="text-align:right;">
+                  <span class="bp-pill" style="{{ p.typeStyle }}">{{ p.typeLabel }}</span>
+                  <div class="bp-num" style="font-weight:800; font-size:16px; margin-top:6px;">{{ p.amtLabel }}</div>
+                </div>
+                <span style="color:var(--soft); font-size:20px; font-weight:700;">›</span>
+              </button>
+            </sc-for>
+          </div>
+        </sc-if>
+
+      </div>
+    </div>
+
+    <sc-if value="{{ formOpen }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute; inset:0; z-index:40; background:rgba(36,31,24,.42); display:flex; align-items:flex-end; justify-content:center;">
+        <div class="bp-card" style="width:100%; max-width:480px; max-height:94%; overflow-y:auto; border-radius:22px 22px 0 0; padding:22px 22px 26px; margin:0 8px;">
+          <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:4px;">
+            <div style="font-size:19px; font-weight:800; letter-spacing:-.01em;">{{ form.title }}</div>
+            <button onClick="{{ form.onClose }}" style="border:none; background:#F1E9DA; width:32px; height:32px; border-radius:10px; cursor:pointer; font-size:17px; color:var(--muted); flex:none;">✕</button>
+          </div>
+          <div style="font-size:12.5px; color:var(--muted); font-weight:600; margin-bottom:18px;">{{ form.subtitle }}</div>
+
+          <label style="display:block; font-size:12px; font-weight:700; color:var(--muted); margin-bottom:6px;">Name</label>
+          <input value="{{ form.name }}" onInput="{{ form.onName }}" placeholder="z. B. Wohngebäudeversicherung" style="width:100%; border:1px solid var(--line); border-radius:11px; padding:11px 13px; font:inherit; font-size:14.5px; font-weight:600; background:#FBF8F2; margin-bottom:14px;" />
+
+          <div style="display:flex; gap:12px; margin-bottom:14px;">
+            <div style="flex:1;">
+              <label style="display:block; font-size:12px; font-weight:700; color:var(--muted); margin-bottom:6px;">Typ</label>
+              <select value="{{ form.type }}" onChange="{{ form.onType }}" style="width:100%; border:1px solid var(--line); border-radius:11px; padding:11px 13px; font:inherit; font-size:14px; font-weight:600; background:#FBF8F2;">
+                <sc-for list="{{ form.typeOptions }}" as="o" hint-placeholder-count="2"><option value="{{ o.value }}">{{ o.label }}</option></sc-for>
+              </select>
+            </div>
+            <div style="flex:1;">
+              <label style="display:block; font-size:12px; font-weight:700; color:var(--muted); margin-bottom:6px;">Kategorie</label>
+              <select value="{{ form.cat }}" onChange="{{ form.onCat }}" style="width:100%; border:1px solid var(--line); border-radius:11px; padding:11px 13px; font:inherit; font-size:14px; font-weight:600; background:#FBF8F2;">
+                <sc-for list="{{ form.catOptions }}" as="o" hint-placeholder-count="6"><option value="{{ o.value }}">{{ o.label }}</option></sc-for>
+              </select>
+            </div>
+          </div>
+
+          <div style="display:flex; gap:12px; margin-bottom:14px;">
+            <div style="flex:1;">
+              <label style="display:block; font-size:12px; font-weight:700; color:var(--muted); margin-bottom:6px;">Betrag (EUR)</label>
+              <input value="{{ form.amount }}" onInput="{{ form.onAmount }}" inputmode="decimal" placeholder="0,00" style="width:100%; border:1px solid var(--line); border-radius:11px; padding:11px 13px; font:inherit; font-size:14.5px; font-weight:700; background:#FBF8F2;" />
+            </div>
+            <div style="flex:1;">
+              <label style="display:block; font-size:12px; font-weight:700; color:var(--muted); margin-bottom:6px;">Frequenz</label>
+              <select value="{{ form.frequency }}" onChange="{{ form.onFreq }}" style="width:100%; border:1px solid var(--line); border-radius:11px; padding:11px 13px; font:inherit; font-size:14px; font-weight:600; background:#FBF8F2;">
+                <sc-for list="{{ form.freqOptions }}" as="o" hint-placeholder-count="4"><option value="{{ o.value }}">{{ o.label }}</option></sc-for>
+              </select>
+            </div>
+          </div>
+
+          <div style="display:flex; gap:12px; margin-bottom:14px;">
+            <div style="flex:1;">
+              <label style="display:block; font-size:12px; font-weight:700; color:var(--muted); margin-bottom:6px;">{{ form.fromLabel }}</label>
+              <input type="date" value="{{ form.validFrom }}" onInput="{{ form.onFrom }}" style="width:100%; border:1px solid var(--line); border-radius:11px; padding:10px 13px; font:inherit; font-size:14px; font-weight:600; background:#FBF8F2;" />
+            </div>
+            <sc-if value="{{ form.showPayment }}" hint-placeholder-val="{{ false }}">
+              <div style="flex:1;">
+                <label style="display:block; font-size:12px; font-weight:700; color:var(--muted); margin-bottom:6px;">Zahlungsmonat</label>
+                <select value="{{ form.paymentMonth }}" onChange="{{ form.onPay }}" style="width:100%; border:1px solid var(--line); border-radius:11px; padding:11px 13px; font:inherit; font-size:14px; font-weight:600; background:#FBF8F2;">
+                  <option value="">aus „Gültig ab“</option>
+                  <sc-for list="{{ form.monthOptions }}" as="o" hint-placeholder-count="12"><option value="{{ o.value }}">{{ o.label }}</option></sc-for>
+                </select>
+              </div>
+            </sc-if>
+          </div>
+
+          <label style="display:block; font-size:12px; font-weight:700; color:var(--muted); margin-bottom:6px;">Notiz (optional)</label>
+          <input value="{{ form.note }}" onInput="{{ form.onNote }}" placeholder="Notiz" style="width:100%; border:1px solid var(--line); border-radius:11px; padding:11px 13px; font:inherit; font-size:14px; font-weight:600; background:#FBF8F2; margin-bottom:18px;" />
+
+          <div style="display:flex; gap:10px;">
+            <button onClick="{{ form.onClose }}" style="flex:none; border:1px solid var(--line); background:#fff; color:var(--muted); font:inherit; font-weight:700; font-size:14px; padding:12px 18px; border-radius:12px; cursor:pointer;">Abbrechen</button>
+            <button onClick="{{ form.onSave }}" style="flex:1; border:none; color:#fff; font:inherit; font-weight:800; font-size:14px; padding:12px 18px; border-radius:12px; {{ form.saveStyle }}">{{ form.saveLabel }}</button>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ confirmOpen }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute; inset:0; z-index:50; background:rgba(36,31,24,.42); display:flex; align-items:center; justify-content:center; padding:24px;">
+        <div class="bp-card" style="width:100%; max-width:360px; padding:24px; text-align:center;">
+          <div style="font-size:17px; font-weight:800; margin-bottom:6px;">Position löschen?</div>
+          <div style="font-size:13px; color:var(--muted); font-weight:600; margin-bottom:20px;">„{{ confirmDel.name }}“ wird mit allen Versionen entfernt. Das kann nicht rückgängig gemacht werden.</div>
+          <div style="display:flex; gap:10px;">
+            <button onClick="{{ confirmDel.onNo }}" style="flex:1; border:1px solid var(--line); background:#fff; color:var(--muted); font:inherit; font-weight:700; font-size:14px; padding:12px; border-radius:12px; cursor:pointer;">Abbrechen</button>
+            <button onClick="{{ confirmDel.onYes }}" style="flex:1; border:none; background:var(--neg); color:#fff; font:inherit; font-weight:800; font-size:14px; padding:12px; border-radius:12px; cursor:pointer;">Löschen</button>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isMobile }}" hint-placeholder-val="{{ true }}">
+      <nav style="flex:none; display:flex; background:#FBF8F2; border-top:1px solid var(--line); padding:6px 6px calc(6px + env(safe-area-inset-bottom));">
+        <sc-for list="{{ navItems }}" as="n" hint-placeholder-count="5">
+          <button class="bp-bot-btn" style="{{ n.botStyle }}" onClick="{{ n.onClick }}">
+            <span class="bp-icon" style="{{ n.dotStyle }}; width:16px; height:16px;"></span>{{ n.short }}
+          </button>
+        </sc-for>
+      </nav>
+    </sc-if>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1180,&quot;height&quot;:820},&quot;mode&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;desktop&quot;,&quot;mobile&quot;],&quot;default&quot;:&quot;desktop&quot;,&quot;tsType&quot;:&quot;'desktop'|'mobile'&quot;},&quot;start&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;dashboard&quot;,&quot;month&quot;,&quot;year&quot;,&quot;positions&quot;,&quot;categories&quot;],&quot;default&quot;:&quot;dashboard&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  state = { screen:'dashboard', year:2026, month:3, mode:'budget', selectedId:null };
+
+  componentDidMount(){ if(this.props.start && this.props.start!==this.state.screen){ this.setState({screen:this.props.start}); } }
+
+  uid(){ return 'i'+Math.random().toString(36).slice(2,8); }
+  amtInput(n){ return String(n).replace('.',','); }
+  dayBefore(dateStr){ const p=this.parse(dateStr); const d=new Date(Date.UTC(p.y,p.mo-1,p.da)); d.setUTCDate(d.getUTCDate()-1);
+    const z=n=>String(n).padStart(2,'0'); return d.getUTCFullYear()+'-'+z(d.getUTCMonth()+1)+'-'+z(d.getUTCDate()); }
+  openCreate(catId){ const today=this.state.year+'-'+String(this.state.month).padStart(2,'0')+'-01';
+    this.setState({ form:{ id:null, mode:'create', name:'', cat:catId||'wohnen', type:'expense', frequency:'monthly', amount:'', validFrom:today, paymentMonth:'', note:'' } }); }
+  openEdit(id){ const it=this.items.find(i=>i.id===id); const v=it.versions[it.versions.length-1];
+    this.setState({ form:{ id:it.id, mode:'edit', name:it.name, cat:it.cat, type:it.type, frequency:v.frequency, amount:this.amtInput(v.amount), validFrom:v.validFrom, paymentMonth:v.paymentMonth||'', note:v.note||'' } }); }
+  openNewVersion(id){ const it=this.items.find(i=>i.id===id); const v=it.versions[it.versions.length-1];
+    const today=this.state.year+'-'+String(this.state.month).padStart(2,'0')+'-01';
+    this.setState({ form:{ id:it.id, mode:'version', name:it.name, cat:it.cat, type:it.type, frequency:v.frequency, amount:this.amtInput(v.amount), validFrom:today, paymentMonth:v.paymentMonth||'', note:'' } }); }
+  closeForm(){ this.setState({form:null}); }
+  setField(k,val){ this.setState(s=>({form:{...s.form,[k]:val}})); }
+  parseAmount(a){ return parseFloat(String(a).replace(/\s/g,'').replace('.','').replace(',','.')); }
+  saveForm(){ const f=this.state.form; if(!f) return;
+    const amt=this.parseAmount(f.amount); if(!f.name.trim()||isNaN(amt)||amt<0) return;
+    const pm=(f.frequency==='yearly'||f.frequency==='quarterly')&&f.paymentMonth? parseInt(f.paymentMonth):null;
+    const newVer={ amount:amt, frequency:f.frequency, validFrom:f.validFrom, validTo:null, paymentMonth:pm, note:(f.note||'').trim() };
+    if(f.mode==='create'){
+      this.items.push({ id:this.uid(), name:f.name.trim(), cat:f.cat, type:f.type, active:true, versions:[newVer] });
+      this.setState({form:null, screen:'detail', selectedId:this.items[this.items.length-1].id});
+    } else {
+      const it=this.items.find(i=>i.id===f.id); if(!it){ this.setState({form:null}); return; }
+      it.name=f.name.trim(); it.cat=f.cat; it.type=f.type;
+      if(f.mode==='version'){ const prev=it.versions[it.versions.length-1]; if(prev) prev.validTo=this.dayBefore(f.validFrom); it.versions.push(newVer); }
+      else { const cur=it.versions[it.versions.length-1]; it.versions[it.versions.length-1]={...newVer, validTo:cur?cur.validTo:null}; }
+      this.setState({form:null});
+    }
+  }
+  toggleActive(id){ const it=this.items.find(i=>i.id===id); if(it){ it.active=!it.active; this.forceUpdate(); } }
+  deleteItem(id){ this.items=this.items.filter(i=>i.id!==id); this.setState({confirmDel:null, screen:'positions', selectedId:null}); }
+
+  cats = [
+    {id:'einkommen',name:'Einkommen'},{id:'wohnen',name:'Wohnen'},{id:'energie',name:'Energie'},
+    {id:'abos',name:'Abos'},{id:'versicherungen',name:'Versicherungen'},{id:'haushalt',name:'Haushalt'}
+  ];
+
+  items = [
+    {id:'gehalt',name:'Gehalt',cat:'einkommen',type:'income',active:true,versions:[
+      {amount:3500,frequency:'monthly',validFrom:'2026-01-01',validTo:null,paymentMonth:null,note:'Monatliches Nettogehalt'}]},
+    {id:'miete',name:'Miete',cat:'wohnen',type:'expense',active:true,versions:[
+      {amount:1200,frequency:'monthly',validFrom:'2026-01-01',validTo:null,paymentMonth:null,note:'Kaltmiete inkl. Nebenkosten'}]},
+    {id:'strom',name:'Strom',cat:'energie',type:'expense',active:true,versions:[
+      {amount:120,frequency:'monthly',validFrom:'2026-01-01',validTo:'2026-02-28',paymentMonth:null,note:'Abschlag bis Februar'},
+      {amount:145,frequency:'monthly',validFrom:'2026-03-01',validTo:null,paymentMonth:null,note:'Erhöhter Abschlag ab März'}]},
+    {id:'netflix',name:'Netflix',cat:'abos',type:'expense',active:true,versions:[
+      {amount:15.99,frequency:'monthly',validFrom:'2026-01-01',validTo:null,paymentMonth:null,note:'Standard-Abo'}]},
+    {id:'prime',name:'Amazon Prime',cat:'abos',type:'expense',active:true,versions:[
+      {amount:89.90,frequency:'yearly',validFrom:'2026-02-01',validTo:null,paymentMonth:2,note:'Jahresmitgliedschaft'}]},
+    {id:'kfz',name:'Kfz-Versicherung',cat:'versicherungen',type:'expense',active:true,versions:[
+      {amount:720,frequency:'yearly',validFrom:'2026-01-01',validTo:null,paymentMonth:3,note:'Jahresbeitrag, Zahlung im März'}]},
+    {id:'haftpflicht',name:'Haftpflicht',cat:'versicherungen',type:'expense',active:true,versions:[
+      {amount:90,frequency:'yearly',validFrom:'2026-01-01',validTo:null,paymentMonth:1,note:'Privathaftpflicht'}]},
+    {id:'wama',name:'Waschmaschine',cat:'haushalt',type:'expense',active:true,versions:[
+      {amount:600,frequency:'once',validFrom:'2026-05-15',validTo:null,paymentMonth:null,note:'Neuanschaffung'}]}
+  ];
+
+  fmt(n){ return new Intl.NumberFormat('de-DE',{style:'currency',currency:'EUR'}).format(n); }
+  monthName(m){ return ['','Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'][m]; }
+  parse(d){ const p=d.split('-').map(Number); return {y:p[0],mo:p[1],da:p[2]}; }
+  dateLabel(d){ const p=this.parse(d); const z=n=>String(n).padStart(2,'0'); return z(p.da)+'.'+z(p.mo)+'.'+p.y; }
+  catName(id){ const c=this.cats.find(c=>c.id===id); return c?c.name:id; }
+  freqLabel(f){ return {monthly:'Monatlich',quarterly:'Quartalsweise',yearly:'Jährlich',once:'Einmalig'}[f]; }
+
+  validVersion(item,y,m){
+    return item.versions.find(v=>{
+      const f=this.parse(v.validFrom);
+      const fromOk=(f.y<y)||(f.y===y&&f.mo<=m);
+      let toOk=true;
+      if(v.validTo){ const t=this.parse(v.validTo); toOk=(t.y>y)||(t.y===y&&t.mo>=m); }
+      return fromOk&&toOk;
+    });
+  }
+  monthsSince(fy,fm,y,m){ return (y-fy)*12+(m-fm); }
+  project(item,y,m,mode){
+    const v=this.validVersion(item,y,m); if(!v) return 0; const f=this.parse(v.validFrom);
+    switch(v.frequency){
+      case 'monthly': return v.amount;
+      case 'quarterly': return mode==='budget'? v.amount/3 : (this.monthsSince(f.y,f.mo,y,m)%3===0? v.amount:0);
+      case 'yearly': { const pm=v.paymentMonth||f.mo; return mode==='budget'? v.amount/12 : (m===pm? v.amount:0); }
+      case 'once': return (f.y===y&&f.mo===m)? v.amount:0;
+    }
+    return 0;
+  }
+
+  renderVals(){
+    const S=this.state, mode=S.mode, y=S.year, m=S.month, self=this;
+    const fmt=n=>this.fmt(n);
+    const isDesktop=(this.props.mode||'desktop')!=='mobile';
+    const activeItems=this.items.filter(i=>i.active);
+    const screenKey = S.screen==='detail'?'positions' : (S.screen==='catview'?'categories':S.screen);
+
+    // KPIs (current month + mode)
+    let income=0,expense=0;
+    activeItems.forEach(it=>{ const a=this.project(it,y,m,mode); if(it.type==='income')income+=a; else expense+=a; });
+    const balance=income-expense;
+    const kpis={ incomeLabel:fmt(income), expenseLabel:fmt(expense), balanceLabel:fmt(balance),
+      balColor: balance<0?'#F0A58C':'#9FE3BC', balNeg:balance<0 };
+
+    // Category bars (budget view, expenses)
+    const catMap={};
+    activeItems.forEach(it=>{ if(it.type!=='expense')return; const a=this.project(it,y,m,'budget'); if(a<=0)return; catMap[it.cat]=(catMap[it.cat]||0)+a; });
+    let expBudget=0; Object.values(catMap).forEach(v=>expBudget+=v);
+    const catBars=Object.keys(catMap).map(id=>({name:this.catName(id),amount:catMap[id],amtLabel:fmt(catMap[id]),pct:expBudget>0?Math.round(catMap[id]/expBudget*100):0})).sort((a,b)=>b.amount-a.amount);
+    catBars.forEach(b=>{ b.barStyle='width:'+Math.max(b.pct,4)+'%'; });
+
+    // Upcoming large cashflow payments (next 12 months, lumpy only)
+    const upcoming=[];
+    for(let k=0;k<12;k++){ let yy=y,mm=m+k; while(mm>12){mm-=12;yy++;}
+      activeItems.forEach(it=>{ if(it.type!=='expense')return; const v=this.validVersion(it,yy,mm); if(!v||v.frequency==='monthly')return;
+        const a=this.project(it,yy,mm,'cashflow'); if(a>=80){ upcoming.push({name:it.name,amtLabel:fmt(a),amt:a,when:self.monthName(mm)+' '+yy,mon:self.monthName(mm).slice(0,3),sort:yy*12+mm}); } });
+    }
+    upcoming.sort((a,b)=>a.sort-b.sort);
+    const dash={ catBars, upcoming:upcoming.slice(0,5) };
+
+    // Month overview groups
+    const incLines=activeItems.filter(i=>i.type==='income').map(it=>{ const v=this.validVersion(it,y,m); const a=this.project(it,y,m,mode);
+      return {name:it.name, freq:this.freqLabel(v?v.frequency:'monthly'), amtLabel:fmt(a)}; });
+    const expByCat={};
+    activeItems.filter(i=>i.type==='expense').forEach(it=>{ (expByCat[it.cat]=expByCat[it.cat]||[]).push(it); });
+    const expGroups=Object.keys(expByCat).map(cid=>{
+      const lines=expByCat[cid].map(it=>{ const v=this.validVersion(it,y,m); const a=this.project(it,y,m,mode); const lumpy=v&&v.frequency!=='monthly';
+        return {name:it.name, freq:this.freqLabel(v?v.frequency:'monthly'),
+          tag: lumpy?(mode==='budget'?'anteilig':(a>0?'fällig':'nicht fällig')):'',
+          tagStyle: lumpy?'':'display:none;', amtLabel:fmt(a),
+          amtStyle: a===0?'color:var(--soft);':'color:var(--ink);' }; });
+      const sub=expByCat[cid].reduce((s,it)=>s+this.project(it,y,m,mode),0);
+      return {cat:this.catName(cid), lines, subLabel:fmt(sub), sub}; }).filter(g=>g.lines.length>0).sort((a,b)=>b.sub-a.sub);
+    const segOn='background:#fff; color:var(--ink); box-shadow:0 1px 2px rgba(0,0,0,.08);';
+    const segOff='background:transparent; color:var(--muted); box-shadow:none;';
+    const month={ incLines, expGroups,
+      modeBudgetStyle: mode==='budget'?segOn:segOff,
+      modeCashStyle: mode==='cashflow'?segOn:segOff,
+      modeHint: mode==='budget'?'Jährliche & quartalsweise Kosten anteilig auf Monate verteilt.':'Zahlungen erscheinen im tatsächlich fälligen Monat.' };
+    // Year overview
+    const ym=[]; let yInc=0,yExp=0;
+    for(let mm=1;mm<=12;mm++){ let mi=0,me=0; activeItems.forEach(it=>{ const a=this.project(it,y,mm,mode); if(it.type==='income')mi+=a; else me+=a; });
+      ym.push({short:self.monthName(mm).slice(0,3), inc:mi, exp:me, bal:mi-me, incLabel:fmt(mi), expLabel:fmt(me), balLabel:fmt(mi-me),
+        balStyle: (mi-me)<0?'color:var(--neg);':'color:var(--pos);', current:mm===m,
+        rowStyle: mm===m?'background:#FBF3E6;':''}); yInc+=mi; yExp+=me; }
+    const maxV=Math.max.apply(null, ym.map(x=>Math.max(x.inc,x.exp)).concat([1]));
+    ym.forEach(x=>{ x.incBar='height:'+Math.max(Math.round(x.inc/maxV*100),2)+'%'; x.expBar='height:'+Math.max(Math.round(x.exp/maxV*100),2)+'%'; });
+    const year={ months:ym, incLabel:fmt(yInc), expLabel:fmt(yExp), balLabel:fmt(yInc-yExp), balColor:(yInc-yExp)<0?'#F0A58C':'#9FE3BC',
+      modeBudgetStyle: mode==='budget'?segOn:segOff,
+      modeCashStyle: mode==='cashflow'?segOn:segOff };
+    const prevYear=()=>this.setState(s=>({year:s.year-1}));
+    const nextYear=()=>this.setState(s=>({year:s.year+1}));
+
+    // Budgetpositionen list
+    const positions=this.items.map(it=>{ const latest=it.versions[it.versions.length-1];
+      return { name:it.name, cat:this.catName(it.cat), typeLabel: it.type==='income'?'Einnahme':'Ausgabe',
+        typeStyle: it.type==='income'?'background:var(--pos-soft); color:var(--pos);':'background:var(--accent-soft); color:var(--accent);',
+        freq:this.freqLabel(latest.frequency), amtLabel:fmt(latest.amount),
+        active:it.active, statusLabel: it.active?'Aktiv':'Inaktiv',
+        statusStyle: it.active?'background:var(--pos-soft); color:var(--pos);':'background:#EEE7DA; color:var(--soft);',
+        verLabel: it.versions.length>1?(it.versions.length+' Versionen'):'1 Version',
+        rowStyle: it.active?'':'opacity:.62;',
+        onClick:()=>self.setState({screen:'detail',selectedId:it.id}) }; });
+
+    // Detail
+    const sel=this.items.find(i=>i.id===S.selectedId);
+    let detail=null;
+    if(sel){
+      const vers=sel.versions.map((v,idx)=>({ amtLabel:fmt(v.amount), freq:this.freqLabel(v.frequency),
+        from:this.dateLabel(v.validFrom), to: v.validTo?this.dateLabel(v.validTo):'offen',
+        pay: v.paymentMonth?self.monthName(v.paymentMonth):(v.frequency==='monthly'?'jeden Monat':'aus „Gültig ab“'),
+        note:v.note||'—', current: idx===sel.versions.length-1,
+        badge: idx===sel.versions.length-1?'Aktuell':'Historisch',
+        badgeStyle: idx===sel.versions.length-1?'background:var(--pos-soft); color:var(--pos);':'background:#EEE7DA; color:var(--soft);',
+        dotStyle: idx===sel.versions.length-1?'background:var(--accent);':'background:#D8CDB9;' })).reverse();
+      detail={ name:sel.name, cat:this.catName(sel.cat),
+        typeLabel: sel.type==='income'?'Einnahme':'Ausgabe',
+        typeStyle: sel.type==='income'?'background:var(--pos-soft); color:var(--pos);':'background:var(--accent-soft); color:var(--accent);',
+        statusLabel: sel.active?'Aktiv':'Inaktiv',
+        statusStyle: sel.active?'background:var(--pos-soft); color:var(--pos);':'background:#EEE7DA; color:var(--soft);',
+        toggleLabel: sel.active?'Deaktivieren':'Reaktivieren', versions:vers,
+        onEdit:()=>self.openEdit(sel.id), onVersion:()=>self.openNewVersion(sel.id),
+        onDelete:()=>self.setState({confirmDel:sel.id}), onToggle:()=>self.toggleActive(sel.id) };
+    }
+    const goPositions=()=>this.setState({screen:'positions',selectedId:null});
+    const goDetailBack=()=>this.setState(s=> s.catId? {screen:'catview'} : {screen:'positions',selectedId:null});
+
+    // Category drill-down view
+    const catSel=this.cats.find(c=>c.id===S.catId);
+    let catView=null;
+    if(catSel){
+      const its=this.items.filter(i=>i.cat===catSel.id);
+      const lines=its.map(it=>{ const latest=it.versions[it.versions.length-1];
+        return { name:it.name, typeLabel: it.type==='income'?'Einnahme':'Ausgabe',
+          typeStyle: it.type==='income'?'background:var(--pos-soft); color:var(--pos);':'background:var(--accent-soft); color:var(--accent);',
+          freq:this.freqLabel(latest.frequency), amtLabel:fmt(latest.amount),
+          statusLabel: it.active?'Aktiv':'Inaktiv',
+          statusStyle: it.active?'background:var(--pos-soft); color:var(--pos);':'background:#EEE7DA; color:var(--soft);',
+          rowStyle: it.active?'':'opacity:.62;',
+          onClick:()=>self.setState({screen:'detail',selectedId:it.id}) }; });
+      const budget=its.filter(i=>i.active&&i.type==='expense').reduce((s,it)=>s+this.project(it,y,m,'budget'),0);
+      catView={ name:catSel.name, countLabel: its.length+(its.length===1?' Position':' Positionen'),
+        budgetLabel: its.some(i=>i.type==='income')?'—':fmt(budget), lines, isEmpty:its.length===0,
+        onAdd:()=>self.openCreate(catSel.id) };
+    }
+
+    // Create/Edit form
+    const F=S.form;
+    const months=[]; for(let i=1;i<=12;i++) months.push({value:String(i),label:self.monthName(i),sel:F&&String(F.paymentMonth)===String(i)});
+    let form=null;
+    if(F){ const amtN=this.parseAmount(F.amount);
+      form={ open:true,
+        title: F.mode==='create'?'Neue Ausgabe':(F.mode==='version'?'Neue Version ab Datum':'Position bearbeiten'),
+        subtitle: F.mode==='version'?'Historische Monate bleiben unverändert — nur ab diesem Datum gilt der neue Betrag.':(F.mode==='create'?'Neue Budgetposition erfassen.':'Stammdaten & aktuellen Betrag ändern.'),
+        saveLabel: F.mode==='version'?'Version anlegen':(F.mode==='create'?'Anlegen':'Speichern'),
+        name:F.name, amount:F.amount, validFrom:F.validFrom, note:F.note||'',
+        cat:F.cat, type:F.type, frequency:F.frequency, paymentMonth:String(F.paymentMonth||''),
+        metaHint: F.mode==='version'?'Beim Anlegen einer Version bleiben Name, Typ und Kategorie unverändert.':'',
+        showPayment: F.frequency==='yearly'||F.frequency==='quarterly',
+        fromLabel: F.mode==='version'?'Neuer Betrag gültig ab':(F.frequency==='once'?'Datum':'Gültig ab'),
+        canSave: F.name.trim().length>0 && !isNaN(amtN) && amtN>=0,
+        saveStyle: (F.name.trim().length>0 && !isNaN(amtN) && amtN>=0)?'background:var(--accent); cursor:pointer; opacity:1;':'background:#D8CDB9; cursor:not-allowed; opacity:1;',
+        catOptions: this.cats.map(c=>({value:c.id,label:c.name})),
+        typeOptions: [{value:'expense',label:'Ausgabe'},{value:'income',label:'Einnahme'}],
+        freqOptions: [{value:'monthly',label:'Monatlich'},{value:'quarterly',label:'Quartalsweise'},{value:'yearly',label:'Jährlich'},{value:'once',label:'Einmalig'}],
+        monthOptions: months,
+        onName:e=>self.setField('name',e.target.value),
+        onAmount:e=>self.setField('amount',e.target.value),
+        onCat:e=>self.setField('cat',e.target.value),
+        onType:e=>self.setField('type',e.target.value),
+        onFreq:e=>self.setField('frequency',e.target.value),
+        onFrom:e=>self.setField('validFrom',e.target.value),
+        onPay:e=>self.setField('paymentMonth',e.target.value),
+        onNote:e=>self.setField('note',e.target.value),
+        onSave:()=>self.saveForm(), onClose:()=>self.closeForm() };
+    }
+
+    // Delete confirm
+    const cd=S.confirmDel? this.items.find(i=>i.id===S.confirmDel):null;
+    const confirmDel = cd? { name:cd.name, onYes:()=>self.deleteItem(cd.id), onNo:()=>self.setState({confirmDel:null}) } : null;
+
+    // Categories
+    const categories=this.cats.map(c=>{ const its=this.items.filter(i=>i.cat===c.id);
+      const budget=its.filter(i=>i.active && i.type==='expense').reduce((s,it)=>s+this.project(it,y,m,'budget'),0);
+      const isInc=its.some(i=>i.type==='income');
+      return { name:c.name, countLabel: its.length+(its.length===1?' Position':' Positionen'),
+        budgetLabel: isInc?'—':fmt(budget),
+        dotStyle:'background:'+['#C2410C','#1E7A4D','#A06A1F','#9B59B6','#2E7DA8','#C2410C'][this.cats.indexOf(c)%6]+';',
+        onClick:()=>self.setState({screen:'catview',catId:c.id}) }; });
+
+    const setMode=v=>this.setState({mode:v});
+    const prevMonth=()=>this.setState(s=>{ let mm=s.month-1,yy=s.year; if(mm<1){mm=12;yy--;} return {month:mm,year:yy}; });
+    const nextMonth=()=>this.setState(s=>{ let mm=s.month+1,yy=s.year; if(mm>12){mm=1;yy++;} return {month:mm,year:yy}; });
+
+    // Nav
+    const nav=[
+      {key:'dashboard',label:'Dashboard',short:'Start',color:'#C2410C'},
+      {key:'month',label:'Monatsübersicht',short:'Monat',color:'#1E7A4D'},
+      {key:'year',label:'Jahresübersicht',short:'Jahr',color:'#A06A1F'},
+      {key:'positions',label:'Budgetpositionen',short:'Posten',color:'#9B59B6'},
+      {key:'categories',label:'Kategorien',short:'Kat.',color:'#2E7DA8'}
+    ];
+    const navItems=nav.map(n=>{
+      const active=n.key===screenKey;
+      return { ...n,
+        style: active?'background:var(--ink); color:#fff;':'background:transparent; color:var(--muted);',
+        botStyle: active?'color:var(--accent);':'color:var(--soft);',
+        dotStyle:'border-radius:5px; background:'+(active?'#fff':n.color)+';'+(active?'':' opacity:.85;'),
+        onClick:()=>self.setState({screen:n.key,selectedId:null}) };
+    });
+
+    const titles={ dashboard:['Dashboard','Dein Überblick für '+self.monthName(m)+' '+y],
+      month:['Monatsübersicht','Einnahmen & Ausgaben im Detail'],
+      year:['Jahresübersicht','Alle Monate '+y+' im Vergleich'],
+      positions:['Budgetpositionen','Wiederkehrende & einmalige Posten'],
+      detail:['Position bearbeiten','Versionen & zeitliche Gültigkeit'],
+      categories:['Kategorien','Ausgaben strukturieren'],
+      catview:[catSel?catSel.name:'Kategorie', 'Alle Positionen dieser Kategorie'] };
+    const t=titles[S.screen]||titles.dashboard;
+
+    return {
+      isDesktop, isMobile:!isDesktop,
+      monthLabel:self.monthName(m)+' '+y, yearLabel:String(y),
+      screenTitle:t[0], screenSubtitle:t[1],
+      isDashboard:S.screen==='dashboard', isMonth:S.screen==='month', isYear:S.screen==='year',
+      isPositions:S.screen==='positions', isDetail:S.screen==='detail', isCategories:S.screen==='categories',
+      isCatView:S.screen==='catview',
+      navItems, kpis, dash, month, year, prevMonth, nextMonth, prevYear, nextYear,
+      positions, detail, goPositions, goDetailBack, categories, catView, form, formOpen:!!form, confirmDel, confirmOpen:!!confirmDel,
+      openCreate:()=>self.openCreate(null),
+      setModeBudget:()=>setMode('budget'), setModeCashflow:()=>setMode('cashflow')
+    };
+  }
+}
+</script>
+</body>
+</html>
