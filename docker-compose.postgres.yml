@@ -1,0 +1,27 @@
+# PostgreSQL variant (Spec §10/§11). Run with:
+#   docker compose -f docker-compose.postgres.yml up --build
+services:
+  db:
+    image: postgres:16
+    container_name: budgetpilot-db
+    environment:
+      POSTGRES_DB: budgetpilot
+      POSTGRES_USER: budgetpilot
+      POSTGRES_PASSWORD: budgetpilot
+    volumes:
+      - ./postgres:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  budgetpilot:
+    build: .
+    image: budgetpilot:latest
+    container_name: budgetpilot
+    ports:
+      - "8080:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - Database__Provider=Postgres
+      - Database__ConnectionString=Host=db;Database=budgetpilot;Username=budgetpilot;Password=budgetpilot
+    depends_on:
+      - db
+    restart: unless-stopped

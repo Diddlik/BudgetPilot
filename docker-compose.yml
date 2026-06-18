@@ -1,0 +1,14 @@
+services:
+  budgetpilot:
+    build: .
+    image: budgetpilot:latest
+    container_name: budgetpilot
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - Database__Provider=Sqlite
+      - Database__ConnectionString=Data Source=/app/data/budgetpilot.db
+    restart: unless-stopped
