@@ -1,0 +1,174 @@
+@page "/budgetpositionen/{Id:guid}"
+@rendermode InteractiveServer
+@inject IBudgetItemService Items
+@inject NavigationManager Nav
+
+<PageTitle>Position · BudgetPilot</PageTitle>
+
+@if (item is null)
+{
+    <p>Lade Position ...</p>
+}
+else
+{
+    <header class="page-header">
+        <div>
+            <p class="eyebrow">@item.CategoryName</p>
+            <h1>@item.Name</h1>
+            <div class="pill-row">
+                <span class="pill @(item.Type == BudgetItemType.Income ? "income" : "expense")">@UiText.TypeLabel(item.Type)</span>
+                <span class="pill @(item.IsActive ? "success" : "muted")">@(item.IsActive ? "Aktiv" : "Inaktiv")</span>
+            </div>
+        </div>
+        <div class="header-actions">
+            <button class="button secondary" @onclick="OpenEdit">Bearbeiten</button>
+            <button class="button secondary" @onclick="ToggleActiveAsync">@(item.IsActive ? "Deaktivieren" : "Reaktivieren")</button>
+            <button class="button danger" @onclick="() => confirmDelete = true">Löschen</button>
+        </div>
+    </header>
+
+    <section class="panel action-panel">
+        <div>
+            <h2>Betrag ab einem Datum ändern</h2>
+            <p class="hint">Neue Version ab Datum ist der sichere Standard. Historische Monate bleiben unverändert.</p>
+        </div>
+        <div class="radio-row" aria-label="Versionierungsmodus">
+            <label><input type="radio" checked /> Neue Version ab Datum</label>
+            <label class="muted"><input type="radio" disabled /> rückwirkend</label>
+        </div>
+        <button class="button primary" @onclick="OpenVersion">Neue Version anlegen</button>
+    </section>
+
+    <section class="panel">
+        <header class="panel-header">
+            <h2>Versionshistorie</h2>
+            <span>neueste oben</span>
+        </header>
+        <div class="timeline">
+            @foreach (var version in item.Versions.OrderByDescending(v => v.ValidFrom))
+            {
+                <article class="timeline-entry">
+                    <div class="timeline-dot"></div>
+                    <div class="timeline-card">
+                        <header>
+                            <strong class="numeric">@Money(version.Amount)</strong>
+                            <span class="pill @(version.IsCurrent ? "success" : "neutral")">@(version.IsCurrent ? "Aktuell" : "Historisch")</span>
+                        </header>
+                        <dl>
+                            <div><dt>Frequenz</dt><dd>@UiText.FrequencyLabel(version.Frequency)</dd></div>
+                            <div><dt>Gültig ab</dt><dd>@version.ValidFrom.ToString("dd.MM.yyyy", culture)</dd></div>
+                            <div><dt>Gültig bis</dt><dd>@(version.ValidTo?.ToString("dd.MM.yyyy", culture) ?? "offen")</dd></div>
+                            <div><dt>Zahlung</dt><dd>@PaymentText(version)</dd></div>
+                        </dl>
+                        @if (!string.IsNullOrWhiteSpace(version.Note))
+                        {
+                            <p class="hint">@version.Note</p>
+                        }
+                    </div>
+                </article>
+            }
+        </div>
+    </section>
+}
+
+@if (formMode is not null && item is not null)
+{
+    <BudgetItemForm Mode="@formMode" Item="@item" OnSaved="SavedAsync" OnCancel="CloseForm" />
+}
+
+@if (confirmDelete && item is not null)
+{
+    <div class="modal-backdrop">
+        <section class="confirm-box">
+            <h2>Position löschen?</h2>
+            <p>@item.Name wird mit allen Versionen entfernt.</p>
+            <div class="sheet-actions">
+                <button class="button secondary" @onclick="() => confirmDelete = false">Abbrechen</button>
+                <button class="button danger" @onclick="DeleteAsync">Löschen</button>
+            </div>
+        </section>
+    </div>
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private readonly CultureInfo culture = CultureInfo.GetCultureInfo("de-DE");
+    private BudgetItemDto? item;
+    private string? formMode;
+    private bool confirmDelete;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        item = await Items.GetByIdAsync(Id);
+    }
+
+    private async Task ToggleActiveAsync()
+    {
+        if (item is null)
+        {
+            return;
+        }
+
+        if (item.IsActive)
+        {
+            await Items.DeactivateAsync(item.Id);
+        }
+        else
+        {
+            await Items.ReactivateAsync(item.Id);
+        }
+
+        item = await Items.GetByIdAsync(item.Id);
+    }
+
+    private void OpenEdit()
+    {
+        formMode = "Edit";
+    }
+
+    private void OpenVersion()
+    {
+        formMode = "Version";
+    }
+
+    private async Task SavedAsync(BudgetItemDto? saved)
+    {
+        formMode = null;
+        item = saved ?? await Items.GetByIdAsync(Id);
+    }
+
+    private Task CloseForm()
+    {
+        formMode = null;
+        return Task.CompletedTask;
+    }
+
+    private async Task DeleteAsync()
+    {
+        if (item is null)
+        {
+            return;
+        }
+
+        await Items.DeleteAsync(item.Id);
+        Nav.NavigateTo("/budgetpositionen");
+    }
+
+    private string PaymentText(BudgetItemVersionDto version)
+    {
+        if (version.Frequency == BudgetFrequency.Monthly)
+        {
+            return "jeden Monat";
+        }
+
+        if (version.PaymentMonth is int month)
+        {
+            return culture.DateTimeFormat.GetMonthName(month);
+        }
+
+        return "aus Gültig ab";
+    }
+
+    private string Money(decimal value) => value.ToString("C", culture);
+}

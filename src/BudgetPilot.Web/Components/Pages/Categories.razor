@@ -1,0 +1,142 @@
+@page "/kategorien"
+@rendermode InteractiveServer
+@inject ICategoryService CategoriesService
+@inject IBudgetItemService Items
+@inject IBudgetProjectionService Projections
+@inject NavigationManager Nav
+
+<PageTitle>Kategorien · BudgetPilot</PageTitle>
+
+<header class="page-header">
+    <div>
+        <p class="eyebrow">Struktur</p>
+        <h1>Kategorien</h1>
+    </div>
+    <button class="button primary" @onclick="() => showCreate = true">+ Neue Kategorie</button>
+</header>
+
+@if (showCreate)
+{
+    <section class="panel inline-form">
+        <label>
+            Kategoriename
+            <input class="field" @bind="newCategoryName" />
+        </label>
+        <button class="button primary" disabled="@string.IsNullOrWhiteSpace(newCategoryName)" @onclick="CreateCategoryAsync">Speichern</button>
+        <button class="button secondary" @onclick="() => showCreate = false">Abbrechen</button>
+    </section>
+}
+
+<section class="category-grid">
+    @foreach (var category in categories.OrderBy(c => c.IsActive ? 0 : 1).ThenBy(c => c.Name))
+    {
+        var monthlyBudget = CategoryBudget(category);
+        <article class="category-card @(category.IsActive ? null : "inactive")">
+            <button class="card-link" @onclick="() => OpenCategory(category.Id)">
+                <span class="pill @(category.IsActive ? "success" : "muted")">@(category.IsActive ? "Aktiv" : "Inaktiv")</span>
+                <h2>@category.Name</h2>
+                <dl>
+                    <div><dt>Positionen</dt><dd>@category.ItemCount</dd></div>
+                    <div><dt>Monatsbudget</dt><dd class="numeric">@monthlyBudget</dd></div>
+                </dl>
+            </button>
+            <div class="card-actions">
+                <button class="button secondary" @onclick="() => BeginRename(category)">Umbenennen</button>
+                <button class="button secondary" disabled="@(!category.IsActive)" @onclick="() => DeactivateAsync(category.Id)">Deaktivieren</button>
+            </div>
+        </article>
+    }
+</section>
+
+@if (renameCategory is not null)
+{
+    <div class="modal-backdrop">
+        <section class="confirm-box">
+            <h2>Kategorie umbenennen</h2>
+            <input class="field" @bind="renameName" />
+            <div class="sheet-actions">
+                <button class="button secondary" @onclick="CancelRename">Abbrechen</button>
+                <button class="button primary" disabled="@string.IsNullOrWhiteSpace(renameName)" @onclick="RenameAsync">Speichern</button>
+            </div>
+        </section>
+    </div>
+}
+
+@code {
+    private readonly CultureInfo culture = CultureInfo.GetCultureInfo("de-DE");
+    private List<CategoryDto> categories = [];
+    private List<BudgetItemDto> items = [];
+    private MonthlyBudgetProjectionDto? month;
+    private bool showCreate;
+    private string newCategoryName = string.Empty;
+    private CategoryDto? renameCategory;
+    private string renameName = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        categories = (await CategoriesService.GetAllAsync()).ToList();
+        items = (await Items.GetAllAsync()).ToList();
+        var today = DateTime.Today;
+        month = await Projections.GetMonthlyProjectionAsync(today.Year, today.Month, BudgetViewMode.Budget);
+    }
+
+    private async Task CreateCategoryAsync()
+    {
+        await CategoriesService.CreateAsync(new CreateCategoryRequest(newCategoryName.Trim()));
+        newCategoryName = string.Empty;
+        showCreate = false;
+        await LoadAsync();
+    }
+
+    private void BeginRename(CategoryDto category)
+    {
+        renameCategory = category;
+        renameName = category.Name;
+    }
+
+    private Task CancelRename()
+    {
+        renameCategory = null;
+        renameName = string.Empty;
+        return Task.CompletedTask;
+    }
+
+    private async Task RenameAsync()
+    {
+        if (renameCategory is not null)
+        {
+            await CategoriesService.RenameAsync(renameCategory.Id, renameName.Trim());
+        }
+
+        await CancelRename();
+        await LoadAsync();
+    }
+
+    private async Task DeactivateAsync(Guid id)
+    {
+        await CategoriesService.DeactivateAsync(id);
+        await LoadAsync();
+    }
+
+    private void OpenCategory(Guid id)
+    {
+        Nav.NavigateTo($"/kategorien/{id}");
+    }
+
+    private string CategoryBudget(CategoryDto category)
+    {
+        var categoryItems = items.Where(i => i.CategoryId == category.Id).ToList();
+        if (categoryItems.Any(i => i.Type == BudgetItemType.Income) && categoryItems.All(i => i.Type == BudgetItemType.Income))
+        {
+            return "—";
+        }
+
+        var value = month?.Categories.FirstOrDefault(c => c.CategoryId == category.Id)?.TotalAmount ?? 0m;
+        return value.ToString("C", culture);
+    }
+}
