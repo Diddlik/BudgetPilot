@@ -51,19 +51,25 @@ dotnet test --filter "FullyQualifiedName~Quarterly"    # einzelne Gruppe
 
 ## Docker
 
-**SQLite (Standard):**
+**Einfachster Weg (Windows/PowerShell):** Das Startskript prüft den Docker-Daemon
+(startet Docker Desktop bei Bedarf), baut das Image, fährt den Container hoch,
+wartet auf die App und öffnet sie im Browser.
 
-```bash
-docker compose up --build
+```powershell
+./scripts/start.ps1                 # SQLite
+./scripts/start.ps1 -Postgres       # PostgreSQL-Variante
+./scripts/start.ps1 -Foreground     # mit Live-Logs (Strg+C beendet)
+./scripts/stop.ps1                  # Container stoppen
 ```
 
-Erreichbar unter <http://localhost:8080>. Die Datenbank liegt im gemounteten Volume `./data`.
-
-**PostgreSQL:**
+**Manuell:**
 
 ```bash
-docker compose -f docker-compose.postgres.yml up --build
+docker compose up --build                              # SQLite
+docker compose -f docker-compose.postgres.yml up --build   # PostgreSQL
 ```
+
+Erreichbar unter <http://localhost:8080>. Die SQLite-Datenbank liegt im gemounteten Volume `./data`.
 
 ## Konfiguration
 
