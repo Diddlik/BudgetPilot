@@ -2,6 +2,7 @@ using BudgetPilot.Application.Abstractions;
 using BudgetPilot.Infrastructure.Data;
 using BudgetPilot.Infrastructure.Repositories;
 using BudgetPilot.Infrastructure.Seeding;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -40,6 +41,8 @@ public static class DependencyInjection
 
                 case "sqlite":
                 default:
+                    // SQLite legt die Datei an, aber nicht das übergeordnete Verzeichnis.
+                    EnsureSqliteDirectoryExists(connectionString);
                     options.UseSqlite(connectionString, sqlite =>
                         sqlite.MigrationsAssembly(typeof(BudgetPilotDbContext).Assembly.FullName));
                     break;
@@ -57,5 +60,17 @@ public static class DependencyInjection
         services.AddScoped<DatabaseSeeder>();
 
         return services;
+    }
+
+    /// <summary>Stellt sicher, dass das Verzeichnis der SQLite-Datei existiert (Migrate/Create scheitert sonst).</summary>
+    private static void EnsureSqliteDirectoryExists(string connectionString)
+    {
+        var dataSource = new SqliteConnectionStringBuilder(connectionString).DataSource;
+        if (string.IsNullOrWhiteSpace(dataSource))
+            return;
+
+        var directory = Path.GetDirectoryName(Path.GetFullPath(dataSource));
+        if (!string.IsNullOrEmpty(directory))
+            Directory.CreateDirectory(directory);
     }
 }
