@@ -15,7 +15,22 @@ up --build` verified: serves on :8080, DB in the mounted `./data` volume). PWA
 scaffolding (manifest + icons) is in place; offline/service worker is deferred.
 Specs are the source of truth: the original `BudgetPilot_Requirements.md` and the
 binding implementation spec `Docs/BudgetPilot – Technical Specification/requirements.md`.
-The parallel build plan is `Docs/IMPLEMENTATION_PLAN.md`.
+The parallel build plan is `Docs/IMPLEMENTATION_PLAN.md`. The UI theme follows the
+prototype in `Docs/BudgetPilot – Technical Specification/BudgetApp.dc.html`
+(Plus Jakarta Sans, accent `#C2410C`).
+
+**Auth:** ASP.NET Core Identity (cookie) protects all routed pages —
+`BudgetPilotDbContext` is now an `IdentityDbContext<IdentityUser>`; single private
+user, public registration disabled, account seeded on startup from
+`Auth:Email`/`Auth:Password` (Development seeds `admin@budgetpilot.local`/`ChangeMe!2026`).
+Login/logout are static-SSR pages under `Components/Account` (cookie sign-in needs an
+HTTP context, not a SignalR circuit); every other page gets `[Authorize]` via
+`Components/_Imports.razor`, while account/error pages opt out with `[AllowAnonymous]`.
+The Identity store is the foundation for the future Android bearer-token API
+(`.AddApiEndpoints()` is wired; token endpoints get mapped with the data API later).
+Internet exposure: Caddy reverse proxy (`docker-compose.prod.yml` + `Caddyfile`,
+TLS via Let's Encrypt); the app honours `X-Forwarded-Proto` (`UseForwardedHeaders`).
+Secrets live in `.env` (gitignored; see `.env.example`).
 
 Code, identifiers, and enums are English; user-facing UI text and the specs are
 German. Money is `decimal`, business dates are `DateOnly`.

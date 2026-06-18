@@ -13,6 +13,8 @@
     background: #FBF8F2;
     border-right: 1px solid var(--line);
     color: var(--ink);
+    display: flex;
+    flex-direction: column;
 }
 
 .app-main {

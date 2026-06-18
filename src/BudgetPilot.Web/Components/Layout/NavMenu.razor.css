@@ -80,29 +80,36 @@
     color: var(--accent);
 }
 
-.sidebar-note {
-    position: absolute;
-    left: 16px;
-    right: 16px;
-    bottom: 22px;
-    padding: 14px;
+.sidebar-user {
+    margin-top: auto;
+    display: grid;
+    gap: 8px;
+}
+
+.user-meta {
+    padding: 12px 14px;
     border-radius: 14px;
     background: var(--surface-strong);
 }
 
-.sidebar-note span,
-.sidebar-note strong {
+.user-meta span,
+.user-meta strong {
     display: block;
 }
 
-.sidebar-note span {
+.user-meta span {
     color: var(--muted);
-    font-size: 0.74rem;
+    font-size: 0.72rem;
     font-weight: 700;
 }
 
-.sidebar-note strong {
-    font-size: 0.95rem;
+.user-meta strong {
+    font-size: 0.85rem;
     font-weight: 800;
     margin-top: 2px;
+    word-break: break-all;
+}
+
+.logout-link {
+    min-height: 38px;
 }

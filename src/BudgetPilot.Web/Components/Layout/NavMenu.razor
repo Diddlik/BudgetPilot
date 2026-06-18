@@ -40,7 +40,15 @@
     </NavLink>
 </nav>
 
-<div class="sidebar-note">
-    <span>Budget-Sicht</span>
-    <strong>Planwerte de-DE</strong>
-</div>
+<AuthorizeView>
+    <div class="sidebar-user">
+        <div class="user-meta">
+            <span>Angemeldet als</span>
+            <strong>@context.User.Identity?.Name</strong>
+        </div>
+        <a class="nav-link logout-link" href="account/logout">
+            <span aria-hidden="true">⎋</span>
+            Abmelden
+        </a>
+    </div>
+</AuthorizeView>

@@ -1,0 +1,21 @@
+@page "/account/logout"
+@layout AccountLayout
+@inject SignInManager<IdentityUser> SignInManager
+@inject NavigationManager Nav
+
+<PageTitle>Abmelden · BudgetPilot</PageTitle>
+
+<h1 class="auth-title">Abmelden</h1>
+<p class="auth-sub">Möchtest du dich von BudgetPilot abmelden?</p>
+
+<EditForm Model="this" FormName="logout" OnValidSubmit="LogoutAsync" method="post">
+    <button class="button primary" type="submit" style="width:100%;">Abmelden</button>
+</EditForm>
+
+@code {
+    private async Task LogoutAsync()
+    {
+        await SignInManager.SignOutAsync();
+        Nav.NavigateTo("/account/login");
+    }
+}

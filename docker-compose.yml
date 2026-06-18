@@ -11,4 +11,7 @@ services:
       - ASPNETCORE_ENVIRONMENT=Production
       - Database__Provider=Sqlite
       - Database__ConnectionString=Data Source=/app/data/budgetpilot.db
+      # Single private login account (seeded on first start). Set these in .env.
+      - Auth__Email=${BP_AUTH_EMAIL:?set BP_AUTH_EMAIL in .env}
+      - Auth__Password=${BP_AUTH_PASSWORD:?set BP_AUTH_PASSWORD in .env}
     restart: unless-stopped

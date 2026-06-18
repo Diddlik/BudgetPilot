@@ -1,0 +1,66 @@
+@page "/account/login"
+@layout AccountLayout
+@attribute [AllowAnonymous]
+@using System.ComponentModel.DataAnnotations
+@inject SignInManager<IdentityUser> SignInManager
+@inject NavigationManager Nav
+
+<PageTitle>Anmelden · BudgetPilot</PageTitle>
+
+<h1 class="auth-title">Anmelden</h1>
+<p class="auth-sub">Bitte melde dich an, um auf dein Budget zuzugreifen.</p>
+
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert">@errorMessage</div>
+}
+
+<EditForm Model="Input" FormName="login" OnValidSubmit="LoginAsync" method="post">
+    <DataAnnotationsValidator />
+
+    <label>E-Mail
+        <InputText @bind-Value="Input.Email" class="field" autocomplete="username" placeholder="name@example.com" />
+    </label>
+    <ValidationMessage For="() => Input.Email" />
+
+    <label style="margin-top:14px;">Passwort
+        <InputText type="password" @bind-Value="Input.Password" class="field" autocomplete="current-password" placeholder="••••••••" />
+    </label>
+    <ValidationMessage For="() => Input.Password" />
+
+    <button class="button primary" type="submit" style="width:100%; margin-top:18px;">Anmelden</button>
+</EditForm>
+
+@code {
+    [SupplyParameterFromForm]
+    private LoginModel Input { get; set; } = new();
+
+    [SupplyParameterFromQuery]
+    private string? ReturnUrl { get; set; }
+
+    private string? errorMessage;
+
+    private async Task LoginAsync()
+    {
+        var result = await SignInManager.PasswordSignInAsync(
+            Input.Email, Input.Password, isPersistent: true, lockoutOnFailure: false);
+
+        if (result.Succeeded)
+        {
+            Nav.NavigateTo(string.IsNullOrWhiteSpace(ReturnUrl) ? "/" : ReturnUrl);
+            return;
+        }
+
+        errorMessage = "Anmeldung fehlgeschlagen. Bitte E-Mail und Passwort prüfen.";
+    }
+
+    private sealed class LoginModel
+    {
+        [Required(ErrorMessage = "E-Mail ist erforderlich.")]
+        [EmailAddress(ErrorMessage = "Bitte eine gültige E-Mail eingeben.")]
+        public string Email { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Passwort ist erforderlich.")]
+        public string Password { get; set; } = string.Empty;
+    }
+}

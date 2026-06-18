@@ -1,0 +1,7 @@
+# BudgetPilot reverse proxy. Caddy obtains/renews a Let's Encrypt certificate
+# automatically for $DOMAIN (ports 80 + 443 must be reachable, DNS must point here).
+# The domain is supplied via the DOMAIN variable in .env.
+{$DOMAIN} {
+	encode zstd gzip
+	reverse_proxy budgetpilot:8080
+}
