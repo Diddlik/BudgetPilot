@@ -241,4 +241,39 @@ public sealed class BudgetProjectionServiceTests
         // Budget-Jahressumme der Ausgaben entspricht der Summe der 12 Monats-Ausgaben.
         year.TotalExpense.Should().Be(year.Months.Sum(m => m.TotalExpense));
     }
+
+    [Fact]
+    public async Task PaymentSchedule_ReturnsCashflowDueMonthsForSingleItem()
+    {
+        var store = SeedData.Build();
+        var kfz = store.Items.Single(i => i.Name == "Kfz-Versicherung");
+
+        var schedule = await Service(store).GetPaymentScheduleAsync(kfz.Id, 2026, 2028);
+
+        schedule.Should().HaveCount(3);
+        schedule.Select(e => (e.Year, e.Month, e.Amount)).Should().Equal(
+            (2026, 3, 720m),
+            (2027, 3, 720m),
+            (2028, 3, 720m));
+    }
+
+    [Fact]
+    public async Task MultiYearSummary_AggregatesEachYearInRequestedView()
+    {
+        var store = SeedData.Build();
+        var svc = Service(store);
+
+        var summary = await svc.GetMultiYearSummaryAsync(2026, 2027, BudgetViewMode.Budget);
+        var year2026 = await svc.GetYearlyProjectionAsync(2026, BudgetViewMode.Budget);
+        var year2027 = await svc.GetYearlyProjectionAsync(2027, BudgetViewMode.Budget);
+
+        summary.Should().HaveCount(2);
+        summary.Select(s => s.Year).Should().Equal(2026, 2027);
+        summary[0].TotalIncome.Should().Be(year2026.TotalIncome);
+        summary[0].TotalExpense.Should().Be(year2026.TotalExpense);
+        summary[0].Balance.Should().Be(year2026.Balance);
+        summary[1].TotalIncome.Should().Be(year2027.TotalIncome);
+        summary[1].TotalExpense.Should().Be(year2027.TotalExpense);
+        summary[1].Balance.Should().Be(year2027.Balance);
+    }
 }

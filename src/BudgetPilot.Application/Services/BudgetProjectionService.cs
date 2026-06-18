@@ -46,6 +46,70 @@ public sealed class BudgetProjectionService : IBudgetProjectionService
         return result;
     }
 
+    public async Task<IReadOnlyList<PaymentScheduleEntry>> GetPaymentScheduleAsync(
+        Guid budgetItemId, int fromYear, int toYear, CancellationToken ct = default)
+    {
+        var entries = new List<PaymentScheduleEntry>();
+        if (toYear < fromYear)
+            return entries;
+
+        var item = await _items.GetByIdWithVersionsAsync(budgetItemId, ct).ConfigureAwait(false);
+        if (item is null)
+            return entries;
+
+        // Zahlungsreihe = tatsächliche Fälligkeiten → immer Cashflow-Sicht, unabhängig von IsActive.
+        for (var year = fromYear; year <= toYear; year++)
+        {
+            for (var month = 1; month <= 12; month++)
+            {
+                var version = ProjectionRules.SelectValidVersion(item, year, month);
+                if (version is null)
+                    continue;
+
+                var amount = ProjectionRules.ProjectedMonthlyAmount(
+                    version, year, month, BudgetViewMode.Cashflow, out var isDue);
+                if (!isDue || amount <= 0m)
+                    continue;
+
+                entries.Add(new PaymentScheduleEntry
+                {
+                    Year = year,
+                    Month = month,
+                    Amount = amount,
+                    Frequency = version.Frequency
+                });
+            }
+        }
+
+        return entries;
+    }
+
+    public async Task<IReadOnlyList<YearSummaryDto>> GetMultiYearSummaryAsync(
+        int fromYear, int toYear, BudgetViewMode viewMode, CancellationToken ct = default)
+    {
+        var summaries = new List<YearSummaryDto>();
+        if (toYear < fromYear)
+            return summaries;
+
+        // Eine einzige Repo-Abfrage; alle Jahre auf derselben Datenbasis berechnen.
+        var items = await _items.GetAllWithVersionsAsync(ct).ConfigureAwait(false);
+
+        for (var year = fromYear; year <= toYear; year++)
+        {
+            var summary = new YearSummaryDto { Year = year };
+            for (var m = 1; m <= 12; m++)
+            {
+                var month = BuildMonth(items, year, m, viewMode);
+                summary.TotalIncome += month.TotalIncome;
+                summary.TotalExpense += month.TotalExpense;
+            }
+            summary.Balance = summary.TotalIncome - summary.TotalExpense;
+            summaries.Add(summary);
+        }
+
+        return summaries;
+    }
+
     private static MonthlyBudgetProjectionDto BuildMonth(
         IReadOnlyList<BudgetItem> items, int year, int month, BudgetViewMode viewMode)
     {

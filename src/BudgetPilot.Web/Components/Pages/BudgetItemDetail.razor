@@ -1,6 +1,7 @@
 @page "/budgetpositionen/{Id:guid}"
 @rendermode InteractiveServer
 @inject IBudgetItemService Items
+@inject IBudgetProjectionService Projections
 @inject NavigationManager Nav
 
 <PageTitle>Position · BudgetPilot</PageTitle>
@@ -69,6 +70,43 @@ else
             }
         </div>
     </section>
+
+    <section class="panel">
+        <header class="panel-header">
+            <h2>Zahlungsplan</h2>
+            <span>Cashflow · @ScheduleFromYear–@ScheduleToYear</span>
+        </header>
+        @if (schedule is null)
+        {
+            <p class="hint">Lade Zahlungsplan ...</p>
+        }
+        else if (schedule.Count == 0)
+        {
+            <p class="hint">Keine fälligen Zahlungen in diesem Zeitraum.</p>
+        }
+        else
+        {
+            <p class="hint compact">@schedule.Count Zahlung(en) von @ScheduleFromYear bis @ScheduleToYear.</p>
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr><th>Jahr</th><th>Fällige Monate</th><th class="numeric">Betrag/Zahlung</th><th class="numeric">Jahressumme</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var group in schedule.GroupBy(e => e.Year).OrderBy(g => g.Key))
+                        {
+                            <tr>
+                                <td>@group.Key</td>
+                                <td>@string.Join(", ", group.OrderBy(e => e.Month).Select(e => culture.DateTimeFormat.GetAbbreviatedMonthName(e.Month)))</td>
+                                <td class="numeric">@Money(group.First().Amount)</td>
+                                <td class="numeric">@Money(group.Sum(e => e.Amount))</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
 }
 
 @if (formMode is not null && item is not null)
@@ -97,10 +135,28 @@ else
     private BudgetItemDto? item;
     private string? formMode;
     private bool confirmDelete;
+    private IReadOnlyList<PaymentScheduleEntry>? schedule;
+    private int ScheduleFromYear { get; set; }
+    private int ScheduleToYear { get; set; }
 
     protected override async Task OnParametersSetAsync()
     {
         item = await Items.GetByIdAsync(Id);
+        await LoadScheduleAsync();
+    }
+
+    private async Task LoadScheduleAsync()
+    {
+        schedule = null;
+        if (item is null || item.Versions.Count == 0)
+        {
+            return;
+        }
+
+        // Von der frühesten Version bis fünf Jahre in die Zukunft.
+        ScheduleFromYear = item.Versions.Min(v => v.ValidFrom).Year;
+        ScheduleToYear = Math.Max(DateTime.Today.Year + 5, ScheduleFromYear);
+        schedule = await Projections.GetPaymentScheduleAsync(item.Id, ScheduleFromYear, ScheduleToYear);
     }
 
     private async Task ToggleActiveAsync()
@@ -120,6 +176,7 @@ else
         }
 
         item = await Items.GetByIdAsync(item.Id);
+        await LoadScheduleAsync();
     }
 
     private void OpenEdit()
@@ -136,6 +193,7 @@ else
     {
         formMode = null;
         item = saved ?? await Items.GetByIdAsync(Id);
+        await LoadScheduleAsync();
     }
 
     private Task CloseForm()

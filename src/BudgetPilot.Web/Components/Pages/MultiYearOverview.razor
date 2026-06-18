@@ -1,0 +1,120 @@
+@page "/mehrjahresuebersicht"
+@rendermode InteractiveServer
+@inject IBudgetProjectionService Projections
+
+<PageTitle>Mehrjahresübersicht · BudgetPilot</PageTitle>
+
+<header class="page-header">
+    <div>
+        <p class="eyebrow">Langfristplanung</p>
+        <h1>Mehrjahresübersicht</h1>
+    </div>
+    <div class="header-actions">
+        <button class="button secondary" @onclick="EarlierRange">‹</button>
+        <span class="date-chip">@FromYear–@ToYear</span>
+        <button class="button secondary" @onclick="LaterRange">›</button>
+    </div>
+</header>
+
+<div class="segmented">
+    <button class="@(ViewMode == BudgetViewMode.Budget ? "active" : null)" @onclick="() => SetView(BudgetViewMode.Budget)">Budget-Sicht</button>
+    <button class="@(ViewMode == BudgetViewMode.Cashflow ? "active" : null)" @onclick="() => SetView(BudgetViewMode.Cashflow)">Cashflow-Sicht</button>
+</div>
+
+@if (years is null)
+{
+    <p>Lade Mehrjahresübersicht ...</p>
+}
+else
+{
+    <section class="panel">
+        <header class="panel-header">
+            <h2>Jahre @FromYear–@ToYear</h2>
+            <span>@UiText.ViewModeLabel(ViewMode)</span>
+        </header>
+        <div class="year-chart">
+            @{
+                var max = years.Count == 0 ? 0m : Math.Max(years.Max(y => y.TotalIncome), years.Max(y => y.TotalExpense));
+            }
+            @foreach (var year in years)
+            {
+                var incomeHeight = max == 0 ? 0 : decimal.ToInt32(decimal.Round(year.TotalIncome / max * 100m));
+                var expenseHeight = max == 0 ? 0 : decimal.ToInt32(decimal.Round(year.TotalExpense / max * 100m));
+                <div class="chart-month @(year.Year == DateTime.Today.Year ? "current" : null)">
+                    <div class="bars">
+                        <span class="income-bar" style="height:@incomeHeight%"></span>
+                        <span class="expense-bar" style="height:@expenseHeight%"></span>
+                    </div>
+                    <small>@year.Year</small>
+                </div>
+            }
+        </div>
+    </section>
+
+    <section class="panel">
+        <header class="panel-header">
+            <h2>Jahrestabelle</h2>
+            <span>Saldo grün/rot</span>
+        </header>
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Jahr</th>
+                        <th class="numeric">Einnahmen</th>
+                        <th class="numeric">Ausgaben</th>
+                        <th class="numeric">Saldo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var year in years)
+                    {
+                        <tr class="@(year.Year == DateTime.Today.Year ? "current-row" : null)">
+                            <td>@year.Year</td>
+                            <td class="numeric">@Money(year.TotalIncome)</td>
+                            <td class="numeric">@Money(year.TotalExpense)</td>
+                            <td class="numeric @(year.Balance >= 0 ? "text-positive" : "text-negative")">@Money(year.Balance)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+}
+
+@code {
+    private readonly CultureInfo culture = CultureInfo.GetCultureInfo("de-DE");
+    private int FromYear { get; set; } = DateTime.Today.Year - 2;
+    private int ToYear { get; set; } = DateTime.Today.Year + 5;
+    private BudgetViewMode ViewMode { get; set; } = BudgetViewMode.Budget;
+    private IReadOnlyList<YearSummaryDto>? years;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        years = await Projections.GetMultiYearSummaryAsync(FromYear, ToYear, ViewMode);
+    }
+
+    private async Task EarlierRange()
+    {
+        FromYear -= 4;
+        ToYear -= 4;
+        await LoadAsync();
+    }
+
+    private async Task LaterRange()
+    {
+        FromYear += 4;
+        ToYear += 4;
+        await LoadAsync();
+    }
+
+    private async Task SetView(BudgetViewMode mode)
+    {
+        ViewMode = mode;
+        await LoadAsync();
+    }
+
+    private string Money(decimal value) => value.ToString("C", culture);
+}

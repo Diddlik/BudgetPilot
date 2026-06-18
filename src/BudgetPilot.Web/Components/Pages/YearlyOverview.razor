@@ -57,6 +57,46 @@ else
 
     <section class="panel">
         <header class="panel-header">
+            <div>
+                <h2>Mehrjahres-Übersicht</h2>
+                <p class="hint compact">Planung von @Year bis @MultiYearTo in @UiText.ViewModeLabel(ViewMode).</p>
+            </div>
+            <span>@(multiYear?.Count ?? 0) Jahre</span>
+        </header>
+        @if (multiYear is null)
+        {
+            <p class="hint">Lade Mehrjahres-Übersicht ...</p>
+        }
+        else
+        {
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Jahr</th>
+                            <th class="numeric">Einnahmen</th>
+                            <th class="numeric">Ausgaben</th>
+                            <th class="numeric">Saldo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var year in multiYear)
+                        {
+                            <tr class="@(year.Year == Year ? "current-row" : null)">
+                                <td>@year.Year</td>
+                                <td class="numeric">@Money(year.TotalIncome)</td>
+                                <td class="numeric">@Money(year.TotalExpense)</td>
+                                <td class="numeric @(year.Balance >= 0 ? "text-positive" : "text-negative")">@Money(year.Balance)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+
+    <section class="panel">
+        <header class="panel-header">
             <h2>Monatstabelle</h2>
             <span>Saldo grün/rot</span>
         </header>
@@ -91,12 +131,15 @@ else
     private int Year { get; set; } = DateTime.Today.Year;
     private BudgetViewMode ViewMode { get; set; } = BudgetViewMode.Budget;
     private YearlyBudgetProjectionDto? yearly;
+    private IReadOnlyList<YearSummaryDto>? multiYear;
+    private int MultiYearTo => Year + 5;
 
     protected override Task OnInitializedAsync() => LoadAsync();
 
     private async Task LoadAsync()
     {
         yearly = await Projections.GetYearlyProjectionAsync(Year, ViewMode);
+        multiYear = await Projections.GetMultiYearSummaryAsync(Year, MultiYearTo, ViewMode);
     }
 
     private async Task PreviousYear()
