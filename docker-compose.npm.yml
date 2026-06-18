@@ -1,0 +1,36 @@
+# BudgetPilot for use behind Nginx Proxy Manager (NPM).
+# NPM terminates TLS and forwards to this container; the app reads X-Forwarded-Proto.
+#
+# Two ways to point NPM at the app:
+#   (a) Published port (default): NPM "Forward Hostname/IP" = <server-LAN-IP>,
+#       "Forward Port" = ${APP_PORT} (default 8080), Scheme = http.
+#   (b) Shared Docker network (no published port needed): uncomment the "networks"
+#       blocks below, set the network to NPM's network, and in NPM use
+#       Forward Hostname = budgetpilot, Forward Port = 8080.
+#
+# Usage:  cp .env.example .env  &&  ./scripts/deploy.sh
+services:
+  budgetpilot:
+    build: .
+    image: budgetpilot:latest
+    container_name: budgetpilot
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - Database__Provider=Sqlite
+      - Database__ConnectionString=Data Source=/app/data/budgetpilot.db
+      # Single private login account (seeded on first start). Set these in .env.
+      - Auth__Email=${BP_AUTH_EMAIL:?set BP_AUTH_EMAIL in .env}
+      - Auth__Password=${BP_AUTH_PASSWORD:?set BP_AUTH_PASSWORD in .env}
+    restart: unless-stopped
+    # --- Option (b): attach to NPM's network instead of publishing a port ---
+    # networks:
+    #   - proxy
+
+# networks:
+#   proxy:
+#     external: true
+#     name: <name-of-NPMs-docker-network>

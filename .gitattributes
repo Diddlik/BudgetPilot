@@ -13,6 +13,7 @@
 *.md        text
 *.yml       text
 *.yaml      text
+*.sh        text eol=lf
 
 # Binary
 *.png       binary
