@@ -1,0 +1,195 @@
+@rendermode InteractiveServer
+@inject IBudgetItemService Items
+@inject ICategoryService Categories
+
+<div class="modal-backdrop" @onclick="Cancel">
+    <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="budget-form-title" @onclick:stopPropagation="true">
+        <header class="sheet-header">
+            <div>
+                <p class="eyebrow">@ModeTitle</p>
+                <h2 id="budget-form-title">@Heading</h2>
+            </div>
+            <button type="button" class="icon-button" title="Schließen" @onclick="Cancel">×</button>
+        </header>
+
+        @if (!string.IsNullOrWhiteSpace(error))
+        {
+            <div class="alert">@error</div>
+        }
+
+        <div class="form-grid">
+            <label>
+                Name
+                <input class="field" @bind="Name" disabled="@IsVersionMode" />
+            </label>
+
+            <label>
+                Typ
+                <select class="field" @bind="Type" disabled="@IsVersionMode">
+                    <option value="@BudgetItemType.Expense">Ausgabe</option>
+                    <option value="@BudgetItemType.Income">Einnahme</option>
+                </select>
+            </label>
+
+            <label>
+                Kategorie
+                <select class="field" @bind="CategoryId" disabled="@IsVersionMode">
+                    @foreach (var category in activeCategories)
+                    {
+                        <option value="@category.Id">@category.Name</option>
+                    }
+                </select>
+            </label>
+
+            <label>
+                Betrag (EUR)
+                <input class="field numeric" inputmode="decimal" @bind="AmountText" @bind:event="oninput" />
+            </label>
+
+            <label>
+                Frequenz
+                <select class="field" @bind="Frequency">
+                    <option value="@BudgetFrequency.Monthly">Monatlich</option>
+                    <option value="@BudgetFrequency.Quarterly">Quartalsweise</option>
+                    <option value="@BudgetFrequency.Yearly">Jährlich</option>
+                    <option value="@BudgetFrequency.Once">Einmalig</option>
+                </select>
+            </label>
+
+            <label>
+                Gültig ab / Datum
+                <input class="field" type="date" value="@ValidFromText" @onchange="OnValidFromChanged" />
+            </label>
+
+            @if (Frequency is BudgetFrequency.Yearly or BudgetFrequency.Quarterly)
+            {
+                <label>
+                    Zahlungsmonat
+                    <select class="field" @bind="PaymentMonthText">
+                        <option value="">aus Gültig ab</option>
+                        @for (var month = 1; month <= 12; month++)
+                        {
+                            <option value="@month.ToString(CultureInfo.InvariantCulture)">@CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(month)</option>
+                        }
+                    </select>
+                </label>
+            }
+
+            <label class="span-2">
+                Notiz
+                <textarea class="field" rows="3" @bind="Note"></textarea>
+            </label>
+        </div>
+
+        <footer class="sheet-actions">
+            <button type="button" class="button secondary" @onclick="Cancel">Abbrechen</button>
+            <button type="button" class="button primary" disabled="@(!CanSave)" @onclick="SaveAsync">Speichern</button>
+        </footer>
+    </section>
+</div>
+
+@code {
+    [Parameter] public string Mode { get; set; } = "Create";
+    [Parameter] public BudgetItemDto? Item { get; set; }
+    [Parameter] public Guid? PresetCategoryId { get; set; }
+    [Parameter] public EventCallback<BudgetItemDto?> OnSaved { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private readonly CultureInfo culture = CultureInfo.GetCultureInfo("de-DE");
+    private List<CategoryDto> activeCategories = [];
+    private string Name { get; set; } = string.Empty;
+    private BudgetItemType Type { get; set; } = BudgetItemType.Expense;
+    private Guid CategoryId { get; set; }
+    private string AmountText { get; set; } = "0,00";
+    private BudgetFrequency Frequency { get; set; } = BudgetFrequency.Monthly;
+    private string ValidFromText { get; set; } = DateOnly.FromDateTime(DateTime.Today).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+    private string PaymentMonthText { get; set; } = string.Empty;
+    private string? Note { get; set; }
+    private string? error;
+
+    private bool IsVersionMode => Mode == "Version";
+    private string ModeTitle => Mode switch
+    {
+        "Edit" => "Bearbeiten",
+        "Version" => "Versionierung",
+        _ => "Neue Position"
+    };
+    private string Heading => Mode switch
+    {
+        "Edit" => "Position bearbeiten",
+        "Version" => "Betrag ab Datum ändern",
+        _ => Type == BudgetItemType.Income ? "Neue Einnahme" : "Neue Ausgabe"
+    };
+    private bool CanSave => !string.IsNullOrWhiteSpace(Name) && TryParseAmount(out var amount) && amount >= 0 && DateOnly.TryParse(ValidFromText, out _) && CategoryId != Guid.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        activeCategories = (await Categories.GetAllAsync()).Where(c => c.IsActive).OrderBy(c => c.Name).ToList();
+        PopulateFromParameters();
+    }
+
+    private void PopulateFromParameters()
+    {
+        var current = Item?.Versions.OrderByDescending(v => v.ValidFrom).FirstOrDefault(v => v.IsCurrent) ?? Item?.Versions.OrderByDescending(v => v.ValidFrom).FirstOrDefault();
+        Name = Item?.Name ?? string.Empty;
+        Type = Item?.Type ?? BudgetItemType.Expense;
+        CategoryId = PresetCategoryId ?? Item?.CategoryId ?? activeCategories.FirstOrDefault()?.Id ?? Guid.Empty;
+        AmountText = (current?.Amount ?? 0m).ToString("N2", culture);
+        Frequency = current?.Frequency ?? BudgetFrequency.Monthly;
+        ValidFromText = (Mode == "Version" ? DateOnly.FromDateTime(DateTime.Today) : current?.ValidFrom ?? DateOnly.FromDateTime(DateTime.Today))
+            .ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        PaymentMonthText = current?.PaymentMonth?.ToString(CultureInfo.InvariantCulture) ?? string.Empty;
+        Note = current?.Note;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (!CanSave || !TryParseAmount(out var amount) || !DateOnly.TryParse(ValidFromText, out var validFrom))
+        {
+            return;
+        }
+
+        try
+        {
+            var paymentMonth = string.IsNullOrWhiteSpace(PaymentMonthText)
+                ? (int?)null
+                : int.Parse(PaymentMonthText, CultureInfo.InvariantCulture);
+
+            BudgetItemDto? saved = null;
+            if (Mode == "Edit" && Item is not null)
+            {
+                saved = await Items.UpdateMetadataAsync(Item.Id, new UpdateBudgetItemMetadataRequest(Name.Trim(), Item.Description, Type, CategoryId));
+                await Items.UpdateCurrentVersionAsync(Item.Id, new UpdateVersionRequest(amount, Frequency, validFrom, null, paymentMonth, Note));
+                saved = await Items.GetByIdAsync(Item.Id);
+            }
+            else if (Mode == "Version" && Item is not null)
+            {
+                await Items.AddVersionAsync(Item.Id, new CreateBudgetItemVersionRequest(amount, Frequency, validFrom, null, paymentMonth, Note));
+                saved = await Items.GetByIdAsync(Item.Id);
+            }
+            else
+            {
+                saved = await Items.CreateAsync(new CreateBudgetItemRequest(Name.Trim(), null, Type, CategoryId, amount, Frequency, validFrom, null, paymentMonth, Note));
+            }
+
+            await OnSaved.InvokeAsync(saved);
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+    }
+
+    private bool TryParseAmount(out decimal amount)
+    {
+        var normalized = AmountText.Trim().Replace('.', ',');
+        return decimal.TryParse(normalized, NumberStyles.Number, culture, out amount);
+    }
+
+    private void OnValidFromChanged(ChangeEventArgs args)
+    {
+        ValidFromText = args.Value?.ToString() ?? string.Empty;
+    }
+
+    private Task Cancel() => OnCancel.InvokeAsync();
+}

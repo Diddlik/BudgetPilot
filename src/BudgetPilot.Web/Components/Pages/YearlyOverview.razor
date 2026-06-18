@@ -1,0 +1,124 @@
+@page "/jahresuebersicht"
+@rendermode InteractiveServer
+@inject IBudgetProjectionService Projections
+
+<PageTitle>Jahresübersicht · BudgetPilot</PageTitle>
+
+<header class="page-header">
+    <div>
+        <p class="eyebrow">Jahresplanung</p>
+        <h1>Jahresübersicht</h1>
+    </div>
+    <div class="header-actions">
+        <button class="button secondary" @onclick="PreviousYear">‹</button>
+        <span class="date-chip">@Year</span>
+        <button class="button secondary" @onclick="NextYear">›</button>
+    </div>
+</header>
+
+<div class="segmented">
+    <button class="@(ViewMode == BudgetViewMode.Budget ? "active" : null)" @onclick="() => SetView(BudgetViewMode.Budget)">Budget-Sicht</button>
+    <button class="@(ViewMode == BudgetViewMode.Cashflow ? "active" : null)" @onclick="() => SetView(BudgetViewMode.Cashflow)">Cashflow-Sicht</button>
+</div>
+
+@if (yearly is null)
+{
+    <p>Lade Jahresübersicht ...</p>
+}
+else
+{
+    <section class="kpi-grid">
+        <article class="kpi-card income"><span>Jahreseinnahmen</span><strong>@Money(yearly.TotalIncome)</strong></article>
+        <article class="kpi-card expense"><span>Jahresausgaben</span><strong>@Money(yearly.TotalExpense)</strong></article>
+        <article class="kpi-card balance @(yearly.Balance >= 0 ? "positive" : "negative")"><span>Jahressaldo</span><strong>@Money(yearly.Balance)</strong></article>
+    </section>
+
+    <section class="panel">
+        <header class="panel-header">
+            <h2>Jan-Dez</h2>
+            <span>@UiText.ViewModeLabel(ViewMode)</span>
+        </header>
+        <div class="year-chart">
+            @foreach (var month in yearly.Months)
+            {
+                var max = Math.Max(yearly.Months.Max(m => m.TotalIncome), yearly.Months.Max(m => m.TotalExpense));
+                var incomeHeight = max == 0 ? 0 : decimal.ToInt32(decimal.Round(month.TotalIncome / max * 100m));
+                var expenseHeight = max == 0 ? 0 : decimal.ToInt32(decimal.Round(month.TotalExpense / max * 100m));
+                <div class="chart-month @(IsCurrentMonth(month) ? "current" : null)">
+                    <div class="bars">
+                        <span class="income-bar" style="height:@incomeHeight%"></span>
+                        <span class="expense-bar" style="height:@expenseHeight%"></span>
+                    </div>
+                    <small>@culture.DateTimeFormat.AbbreviatedMonthNames[month.Month - 1]</small>
+                </div>
+            }
+        </div>
+    </section>
+
+    <section class="panel">
+        <header class="panel-header">
+            <h2>Monatstabelle</h2>
+            <span>Saldo grün/rot</span>
+        </header>
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Monat</th>
+                        <th>Einnahmen</th>
+                        <th>Ausgaben</th>
+                        <th>Saldo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var month in yearly.Months)
+                    {
+                        <tr class="@(IsCurrentMonth(month) ? "current-row" : null)">
+                            <td>@culture.DateTimeFormat.GetMonthName(month.Month)</td>
+                            <td class="numeric">@Money(month.TotalIncome)</td>
+                            <td class="numeric">@Money(month.TotalExpense)</td>
+                            <td class="numeric @(month.Balance >= 0 ? "text-positive" : "text-negative")">@Money(month.Balance)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+}
+
+@code {
+    private readonly CultureInfo culture = CultureInfo.GetCultureInfo("de-DE");
+    private int Year { get; set; } = DateTime.Today.Year;
+    private BudgetViewMode ViewMode { get; set; } = BudgetViewMode.Budget;
+    private YearlyBudgetProjectionDto? yearly;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        yearly = await Projections.GetYearlyProjectionAsync(Year, ViewMode);
+    }
+
+    private async Task PreviousYear()
+    {
+        Year--;
+        await LoadAsync();
+    }
+
+    private async Task NextYear()
+    {
+        Year++;
+        await LoadAsync();
+    }
+
+    private async Task SetView(BudgetViewMode mode)
+    {
+        ViewMode = mode;
+        await LoadAsync();
+    }
+
+    private bool IsCurrentMonth(MonthlyBudgetProjectionDto month) =>
+        month.Year == DateTime.Today.Year && month.Month == DateTime.Today.Month;
+
+    private string Money(decimal value) => value.ToString("C", culture);
+}

@@ -1,0 +1,130 @@
+@page "/budgetpositionen"
+@rendermode InteractiveServer
+@inject IBudgetItemService Items
+@inject ICategoryService Categories
+@inject NavigationManager Nav
+
+<PageTitle>Budgetpositionen · BudgetPilot</PageTitle>
+
+<header class="page-header">
+    <div>
+        <p class="eyebrow">Regeln & Versionen</p>
+        <h1>Budgetpositionen</h1>
+    </div>
+    <button class="button primary" @onclick="() => showForm = true">+ Neue Ausgabe</button>
+</header>
+
+<section class="filter-strip">
+    <label>
+        Kategorie
+        <select class="field" @bind="categoryFilter">
+            <option value="">Alle</option>
+            @foreach (var category in categories)
+            {
+                <option value="@category.Id">@category.Name</option>
+            }
+        </select>
+    </label>
+    <label>
+        Typ
+        <select class="field" @bind="typeFilter">
+            <option value="">Alle</option>
+            <option value="Expense">Ausgabe</option>
+            <option value="Income">Einnahme</option>
+        </select>
+    </label>
+    <label>
+        Status
+        <select class="field" @bind="activeFilter">
+            <option value="">Alle</option>
+            <option value="active">Aktiv</option>
+            <option value="inactive">Inaktiv</option>
+        </select>
+    </label>
+</section>
+
+<section class="panel">
+    <div class="item-list">
+        @foreach (var item in FilteredItems)
+        {
+            var version = CurrentVersion(item);
+            <button class="item-row @(item.IsActive ? null : "inactive")" @onclick="() => OpenItem(item.Id)">
+                <div class="item-main">
+                    <strong>@item.Name</strong>
+                    <span>@item.CategoryName · @UiText.FrequencyLabel(version?.Frequency ?? BudgetFrequency.Monthly)</span>
+                </div>
+                <span class="pill @(item.IsActive ? "success" : "muted")">@(item.IsActive ? "Aktiv" : "Inaktiv")</span>
+                <span class="pill @(item.Type == BudgetItemType.Income ? "income" : "expense")">@UiText.TypeLabel(item.Type)</span>
+                <span>@item.Versions.Count Version@(item.Versions.Count == 1 ? "" : "en")</span>
+                <strong class="numeric">@Money(version?.Amount ?? 0)</strong>
+            </button>
+        }
+    </div>
+</section>
+
+@if (showForm)
+{
+    <BudgetItemForm Mode="Create" OnSaved="CreatedAsync" OnCancel="CloseForm" />
+}
+
+@code {
+    private readonly CultureInfo culture = CultureInfo.GetCultureInfo("de-DE");
+    private List<BudgetItemDto> items = [];
+    private List<CategoryDto> categories = [];
+    private string categoryFilter = string.Empty;
+    private string typeFilter = string.Empty;
+    private string activeFilter = string.Empty;
+    private bool showForm;
+
+    private IEnumerable<BudgetItemDto> FilteredItems => items
+        .Where(i => string.IsNullOrWhiteSpace(categoryFilter) || i.CategoryId.ToString() == categoryFilter)
+        .Where(i => string.IsNullOrWhiteSpace(typeFilter) || i.Type.ToString() == typeFilter)
+        .Where(i => activeFilter switch
+        {
+            "active" => i.IsActive,
+            "inactive" => !i.IsActive,
+            _ => true
+        })
+        .OrderBy(i => i.IsActive ? 0 : 1)
+        .ThenBy(i => i.CategoryName)
+        .ThenBy(i => i.Name);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        items = (await Items.GetAllAsync()).ToList();
+        categories = (await Categories.GetAllAsync()).ToList();
+    }
+
+    private BudgetItemVersionDto? CurrentVersion(BudgetItemDto item) =>
+        item.Versions.FirstOrDefault(v => v.IsCurrent) ?? item.Versions.OrderByDescending(v => v.ValidFrom).FirstOrDefault();
+
+    private void OpenItem(Guid id)
+    {
+        Nav.NavigateTo($"/budgetpositionen/{id}");
+    }
+
+    private async Task CreatedAsync(BudgetItemDto? item)
+    {
+        showForm = false;
+        if (item is not null)
+        {
+            Nav.NavigateTo($"/budgetpositionen/{item.Id}");
+            return;
+        }
+
+        await LoadAsync();
+    }
+
+    private Task CloseForm()
+    {
+        showForm = false;
+        return Task.CompletedTask;
+    }
+
+    private string Money(decimal value) => value.ToString("C", culture);
+}

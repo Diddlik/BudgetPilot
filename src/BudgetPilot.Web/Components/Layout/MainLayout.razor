@@ -1,23 +1,42 @@
-﻿@inherits LayoutComponentBase
+@inherits LayoutComponentBase
 
 <div class="page">
-    <div class="sidebar">
+    <aside class="sidebar" aria-label="Hauptnavigation">
         <NavMenu />
-    </div>
+    </aside>
 
-    <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
-        </div>
-
-        <article class="content px-4">
+    <main class="app-main">
+        <article class="content">
             @Body
         </article>
     </main>
 </div>
 
+<nav class="bottom-nav" aria-label="Mobile Hauptnavigation">
+    <NavLink href="" Match="NavLinkMatch.All">
+        <span aria-hidden="true">⌂</span>
+        <small>Dashboard</small>
+    </NavLink>
+    <NavLink href="monatsuebersicht">
+        <span aria-hidden="true">◷</span>
+        <small>Monat</small>
+    </NavLink>
+    <NavLink href="jahresuebersicht">
+        <span aria-hidden="true">▥</span>
+        <small>Jahr</small>
+    </NavLink>
+    <NavLink href="budgetpositionen">
+        <span aria-hidden="true">≡</span>
+        <small>Positionen</small>
+    </NavLink>
+    <NavLink href="kategorien">
+        <span aria-hidden="true">□</span>
+        <small>Kategorien</small>
+    </NavLink>
+</nav>
+
 <div id="blazor-error-ui">
-    An unhandled error has occurred.
-    <a href="" class="reload">Reload</a>
-    <a class="dismiss">🗙</a>
+    Ein unerwarteter Fehler ist aufgetreten.
+    <a href="" class="reload">Neu laden</a>
+    <a class="dismiss">x</a>
 </div>

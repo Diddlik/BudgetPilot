@@ -1,7 +1,120 @@
-﻿@page "/"
+@page "/"
+@rendermode InteractiveServer
+@inject IBudgetProjectionService Projections
 
-<PageTitle>Home</PageTitle>
+<PageTitle>Dashboard · BudgetPilot</PageTitle>
 
-<h1>Hello, world!</h1>
+<header class="page-header">
+    <div>
+        <p class="eyebrow">Aktueller Monat</p>
+        <h1>Dashboard</h1>
+    </div>
+    <span class="date-chip">@monthLabel</span>
+</header>
 
-Welcome to your new app.
+@if (month is null)
+{
+    <p>Lade Dashboard ...</p>
+}
+else
+{
+    <section class="kpi-grid">
+        <article class="kpi-card income">
+            <span>Einnahmen</span>
+            <strong>@Money(month.TotalIncome)</strong>
+        </article>
+        <article class="kpi-card expense">
+            <span>Ausgaben</span>
+            <strong>@Money(month.TotalExpense)</strong>
+        </article>
+        <article class="kpi-card balance @(month.Balance >= 0 ? "positive" : "negative")">
+            <span>Saldo</span>
+            <strong>@Money(month.Balance)</strong>
+        </article>
+    </section>
+
+    <section class="dashboard-grid">
+        <article class="panel">
+            <header class="panel-header">
+                <h2>Ausgaben nach Kategorie</h2>
+                <span>Budget-Sicht</span>
+            </header>
+
+            <div class="bar-list">
+                @foreach (var category in month.Categories.OrderByDescending(c => c.TotalAmount))
+                {
+                    var width = month.TotalExpense == 0 ? 0 : decimal.ToInt32(decimal.Round(category.TotalAmount / month.TotalExpense * 100m));
+                    <div class="bar-row">
+                        <div>
+                            <strong>@category.CategoryName</strong>
+                            <span>@Money(category.TotalAmount)</span>
+                        </div>
+                        <div class="bar-track" aria-label="@category.CategoryName @Money(category.TotalAmount)">
+                            <span style="width:@width%"></span>
+                        </div>
+                    </div>
+                }
+            </div>
+        </article>
+
+        <article class="panel">
+            <header class="panel-header">
+                <h2>Nächste große Zahlungen</h2>
+                <span>12 Monate</span>
+            </header>
+
+            @if (upcoming.Count == 0)
+            {
+                <p class="muted">Keine größeren Cashflow-Fälligkeiten gefunden.</p>
+            }
+            else
+            {
+                <div class="payment-list">
+                    @foreach (var payment in upcoming)
+                    {
+                        <div class="payment-row">
+                            <div>
+                                <strong>@payment.Name</strong>
+                                <span>@payment.Category · @payment.When.ToString("MMMM yyyy", culture)</span>
+                            </div>
+                            <span class="numeric">@Money(payment.Amount)</span>
+                        </div>
+                    }
+                </div>
+            }
+        </article>
+    </section>
+}
+
+@code {
+    private readonly CultureInfo culture = CultureInfo.GetCultureInfo("de-DE");
+    private MonthlyBudgetProjectionDto? month;
+    private List<NextPayment> upcoming = [];
+    private string monthLabel = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        monthLabel = today.ToString("MMMM yyyy", culture);
+        month = await Projections.GetMonthlyProjectionAsync(today.Year, today.Month, BudgetViewMode.Budget);
+
+        var payments = new List<NextPayment>();
+        for (var offset = 0; offset < 12; offset++)
+        {
+            var target = today.AddMonths(offset);
+            var projection = await Projections.GetMonthlyProjectionAsync(target.Year, target.Month, BudgetViewMode.Cashflow);
+            payments.AddRange(projection.Lines
+                .Where(line => line.Type == BudgetItemType.Expense
+                    && line.Frequency != BudgetFrequency.Monthly
+                    && line.IsDue
+                    && line.ProjectedMonthlyAmount >= 50m)
+                .Select(line => new NextPayment(line.BudgetItemName, line.CategoryName, line.ProjectedMonthlyAmount, target)));
+        }
+
+        upcoming = payments.OrderBy(p => p.When).ThenByDescending(p => p.Amount).Take(6).ToList();
+    }
+
+    private string Money(decimal value) => value.ToString("C", culture);
+
+    private sealed record NextPayment(string Name, string Category, decimal Amount, DateOnly When);
+}

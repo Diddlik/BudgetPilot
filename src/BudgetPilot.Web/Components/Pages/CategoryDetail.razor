@@ -1,0 +1,112 @@
+@page "/kategorien/{Id:guid}"
+@rendermode InteractiveServer
+@inject ICategoryService CategoriesService
+@inject IBudgetProjectionService Projections
+@inject NavigationManager Nav
+
+<PageTitle>Kategorie · BudgetPilot</PageTitle>
+
+@if (category is null)
+{
+    <p>Lade Kategorie ...</p>
+}
+else
+{
+    <header class="page-header">
+        <div>
+            <p class="eyebrow">Kategorie</p>
+            <h1>@category.Name</h1>
+            <div class="pill-row">
+                <span class="pill @(category.IsActive ? "success" : "muted")">@(category.IsActive ? "Aktiv" : "Inaktiv")</span>
+                <span class="pill neutral">@category.ItemCount Position@(category.ItemCount == 1 ? "" : "en")</span>
+                <span class="pill neutral">Monatsbudget @MonthlyBudget</span>
+            </div>
+        </div>
+        <button class="button primary" @onclick="() => showForm = true">+ Ausgabe hinzufügen</button>
+    </header>
+
+    <section class="panel">
+        <header class="panel-header">
+            <h2>Positionen</h2>
+            <span>@category.Name</span>
+        </header>
+
+        @if (items.Count == 0)
+        {
+            <p class="muted">Noch keine Positionen in dieser Kategorie.</p>
+        }
+        else
+        {
+            <div class="item-list">
+                @foreach (var item in items.OrderBy(i => i.IsActive ? 0 : 1).ThenBy(i => i.Name))
+                {
+                    var version = item.Versions.FirstOrDefault(v => v.IsCurrent) ?? item.Versions.OrderByDescending(v => v.ValidFrom).FirstOrDefault();
+                    <button class="item-row @(item.IsActive ? null : "inactive")" @onclick="() => OpenItem(item.Id)">
+                        <div class="item-main">
+                            <strong>@item.Name</strong>
+                            <span>@UiText.FrequencyLabel(version?.Frequency ?? BudgetFrequency.Monthly)</span>
+                        </div>
+                        <span class="pill @(item.Type == BudgetItemType.Income ? "income" : "expense")">@UiText.TypeLabel(item.Type)</span>
+                        <strong class="numeric">@Money(version?.Amount ?? 0m)</strong>
+                    </button>
+                }
+            </div>
+        }
+    </section>
+}
+
+@if (showForm && category is not null)
+{
+    <BudgetItemForm Mode="Create" PresetCategoryId="@category.Id" OnSaved="CreatedAsync" OnCancel="CloseForm" />
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private readonly CultureInfo culture = CultureInfo.GetCultureInfo("de-DE");
+    private CategoryDto? category;
+    private List<BudgetItemDto> items = [];
+    private MonthlyBudgetProjectionDto? month;
+    private bool showForm;
+
+    private string MonthlyBudget => month?.Categories.FirstOrDefault(c => c.CategoryId == Id)?.TotalAmount.ToString("C", culture) ?? "0,00 €";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        var categories = await CategoriesService.GetAllAsync();
+        category = categories.FirstOrDefault(c => c.Id == Id);
+        items = (await CategoriesService.GetItemsByCategoryAsync(Id)).ToList();
+        var today = DateTime.Today;
+        month = await Projections.GetMonthlyProjectionAsync(today.Year, today.Month, BudgetViewMode.Budget);
+    }
+
+    private async Task CreatedAsync(BudgetItemDto? item)
+    {
+        showForm = false;
+        if (item is not null)
+        {
+            Nav.NavigateTo($"/budgetpositionen/{item.Id}");
+            return;
+        }
+
+        await LoadAsync();
+    }
+
+    private Task CloseForm()
+    {
+        showForm = false;
+        return Task.CompletedTask;
+    }
+
+    private void OpenItem(Guid id)
+    {
+        Nav.NavigateTo($"/budgetpositionen/{id}");
+    }
+
+    private string Money(decimal value) => value.ToString("C", culture);
+}

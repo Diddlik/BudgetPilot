@@ -1,0 +1,131 @@
+@page "/monatsuebersicht"
+@rendermode InteractiveServer
+@inject IBudgetProjectionService Projections
+
+<PageTitle>Monatsübersicht · BudgetPilot</PageTitle>
+
+<header class="page-header">
+    <div>
+        <p class="eyebrow">Monatsplanung</p>
+        <h1>Monatsübersicht</h1>
+    </div>
+    <div class="header-actions">
+        <button class="button secondary" @onclick="PreviousMonth">‹</button>
+        <span class="date-chip">@CurrentMonth.ToString("MMMM yyyy", culture)</span>
+        <button class="button secondary" @onclick="NextMonth">›</button>
+    </div>
+</header>
+
+<div class="segmented">
+    <button class="@(ViewMode == BudgetViewMode.Budget ? "active" : null)" @onclick="() => SetView(BudgetViewMode.Budget)">Budget-Sicht</button>
+    <button class="@(ViewMode == BudgetViewMode.Cashflow ? "active" : null)" @onclick="() => SetView(BudgetViewMode.Cashflow)">Cashflow-Sicht</button>
+</div>
+<p class="hint">@ViewHint</p>
+
+@if (projection is null)
+{
+    <p>Lade Monatsübersicht ...</p>
+}
+else
+{
+    <section class="kpi-grid">
+        <article class="kpi-card income"><span>Einnahmen</span><strong>@Money(projection.TotalIncome)</strong></article>
+        <article class="kpi-card expense"><span>Ausgaben</span><strong>@Money(projection.TotalExpense)</strong></article>
+        <article class="kpi-card balance @(projection.Balance >= 0 ? "positive" : "negative")"><span>Saldo</span><strong>@Money(projection.Balance)</strong></article>
+    </section>
+
+    <section class="panel">
+        <header class="panel-header">
+            <h2>Einnahmen</h2>
+            <span>@Money(projection.Lines.Where(l => l.Type == BudgetItemType.Income).Sum(l => l.ProjectedMonthlyAmount))</span>
+        </header>
+        <div class="line-list">
+            @foreach (var line in projection.Lines.Where(l => l.Type == BudgetItemType.Income))
+            {
+                <div class="budget-line @(line.ProjectedMonthlyAmount == 0 ? "muted-line" : null)">
+                    <div>
+                        <strong>@line.BudgetItemName</strong>
+                        <span>@UiText.FrequencyLabel(line.Frequency)</span>
+                    </div>
+                    <span class="pill neutral">@LineTag(line)</span>
+                    <strong class="numeric">@Money(line.ProjectedMonthlyAmount)</strong>
+                </div>
+            }
+        </div>
+    </section>
+
+    @foreach (var group in projection.Lines.Where(l => l.Type == BudgetItemType.Expense).GroupBy(l => l.CategoryName).OrderBy(g => g.Key))
+    {
+        <section class="panel">
+            <header class="panel-header">
+                <h2>@group.Key</h2>
+                <span>@Money(group.Sum(l => l.ProjectedMonthlyAmount))</span>
+            </header>
+            <div class="line-list">
+                @foreach (var line in group.OrderBy(l => l.BudgetItemName))
+                {
+                    <div class="budget-line @(line.ProjectedMonthlyAmount == 0 ? "muted-line" : null)">
+                        <div>
+                            <strong>@line.BudgetItemName</strong>
+                            <span>@UiText.FrequencyLabel(line.Frequency) · Basis @Money(line.Amount)</span>
+                        </div>
+                        <span class="pill neutral">@LineTag(line)</span>
+                        <strong class="numeric">@Money(line.ProjectedMonthlyAmount)</strong>
+                    </div>
+                }
+            </div>
+        </section>
+    }
+}
+
+@code {
+    private readonly CultureInfo culture = CultureInfo.GetCultureInfo("de-DE");
+    private DateOnly CurrentMonth { get; set; } = new(DateTime.Today.Year, DateTime.Today.Month, 1);
+    private BudgetViewMode ViewMode { get; set; } = BudgetViewMode.Budget;
+    private MonthlyBudgetProjectionDto? projection;
+    private string ViewHint => ViewMode == BudgetViewMode.Budget
+        ? "Budget-Sicht verteilt quartalsweise und jährliche Zahlungen gleichmäßig auf Monate."
+        : "Cashflow-Sicht zeigt Zahlungen nur im tatsächlichen Fälligkeitsmonat.";
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        projection = await Projections.GetMonthlyProjectionAsync(CurrentMonth.Year, CurrentMonth.Month, ViewMode);
+    }
+
+    private async Task PreviousMonth()
+    {
+        CurrentMonth = CurrentMonth.AddMonths(-1);
+        await LoadAsync();
+    }
+
+    private async Task NextMonth()
+    {
+        CurrentMonth = CurrentMonth.AddMonths(1);
+        await LoadAsync();
+    }
+
+    private async Task SetView(BudgetViewMode mode)
+    {
+        ViewMode = mode;
+        await LoadAsync();
+    }
+
+    private string LineTag(BudgetProjectionLine line)
+    {
+        if (ViewMode == BudgetViewMode.Budget && line.Frequency is BudgetFrequency.Quarterly or BudgetFrequency.Yearly)
+        {
+            return "anteilig";
+        }
+
+        if (ViewMode == BudgetViewMode.Cashflow && line.Frequency != BudgetFrequency.Monthly)
+        {
+            return line.IsDue ? "fällig" : "nicht fällig";
+        }
+
+        return line.Type == BudgetItemType.Income ? "laufend" : "monatlich";
+    }
+
+    private string Money(decimal value) => value.ToString("C", culture);
+}

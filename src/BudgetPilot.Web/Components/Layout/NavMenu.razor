@@ -1,30 +1,41 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">BudgetPilot.Web</a>
-    </div>
+<div class="brand-block">
+    <a class="brand" href="">
+        <span class="brand-mark" aria-hidden="true">BP</span>
+        <span>
+            <strong>BudgetPilot</strong>
+            <small>Haushaltsplanung</small>
+        </span>
+    </a>
 </div>
 
-<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+<nav class="nav-list" aria-label="Hauptnavigation">
+    <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+        <span aria-hidden="true">⌂</span>
+        Dashboard
+    </NavLink>
 
-<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
-    <nav class="flex-column">
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
-            </NavLink>
-        </div>
+    <NavLink class="nav-link" href="monatsuebersicht">
+        <span aria-hidden="true">◷</span>
+        Monatsübersicht
+    </NavLink>
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="counter">
-                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Counter
-            </NavLink>
-        </div>
+    <NavLink class="nav-link" href="jahresuebersicht">
+        <span aria-hidden="true">▥</span>
+        Jahresübersicht
+    </NavLink>
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="weather">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Weather
-            </NavLink>
-        </div>
-    </nav>
+    <NavLink class="nav-link" href="budgetpositionen">
+        <span aria-hidden="true">≡</span>
+        Budgetpositionen
+    </NavLink>
+
+    <NavLink class="nav-link" href="kategorien">
+        <span aria-hidden="true">□</span>
+        Kategorien
+    </NavLink>
+</nav>
+
+<div class="sidebar-note">
+    <span>Budget-Sicht</span>
+    <strong>Planwerte de-DE</strong>
 </div>
-
