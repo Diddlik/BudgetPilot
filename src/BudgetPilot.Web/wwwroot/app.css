@@ -280,6 +280,17 @@ h2 {
     margin-bottom: 16px;
 }
 
+/* Monatsübersicht: Einnahmen grünlich, Ausgaben rötlich markiert */
+.panel.section-income {
+    border-left: 4px solid var(--income);
+    background: linear-gradient(180deg, var(--income-soft) 0, var(--surface) 64px);
+}
+
+.panel.section-expense {
+    border-left: 4px solid var(--expense);
+    background: linear-gradient(180deg, var(--expense-soft) 0, var(--surface) 64px);
+}
+
 .panel-header {
     display: flex;
     align-items: baseline;

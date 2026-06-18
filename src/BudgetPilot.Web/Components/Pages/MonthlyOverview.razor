@@ -34,10 +34,10 @@ else
         <article class="kpi-card balance @(projection.Balance >= 0 ? "positive" : "negative")"><span>Saldo</span><strong>@Money(projection.Balance)</strong></article>
     </section>
 
-    <section class="panel">
+    <section class="panel section-income">
         <header class="panel-header">
-            <h2>Einnahmen</h2>
-            <span>@Money(projection.Lines.Where(l => l.Type == BudgetItemType.Income).Sum(l => l.ProjectedMonthlyAmount))</span>
+            <span class="pill income">Einnahmen</span>
+            <strong class="numeric text-positive">@Money(projection.Lines.Where(l => l.Type == BudgetItemType.Income).Sum(l => l.ProjectedMonthlyAmount))</strong>
         </header>
         <div class="line-list">
             @foreach (var line in projection.Lines.Where(l => l.Type == BudgetItemType.Income))
@@ -45,10 +45,13 @@ else
                 <div class="budget-line @(line.ProjectedMonthlyAmount == 0 ? "muted-line" : null)">
                     <div>
                         <strong>@line.BudgetItemName</strong>
-                        <span>@UiText.FrequencyLabel(line.Frequency)</span>
+                        <span>@UiText.FrequencyLabel(line.Frequency)@(string.IsNullOrWhiteSpace(line.Note) ? "" : $" · {line.Note}")</span>
                     </div>
-                    <span class="pill neutral">@LineTag(line)</span>
-                    <strong class="numeric">@Money(line.ProjectedMonthlyAmount)</strong>
+                    @if (LineTag(line) is { Length: > 0 } incTag)
+                    {
+                        <span class="pill neutral">@incTag</span>
+                    }
+                    <strong class="numeric text-positive">@Money(line.ProjectedMonthlyAmount)</strong>
                 </div>
             }
         </div>
@@ -56,10 +59,10 @@ else
 
     @foreach (var group in projection.Lines.Where(l => l.Type == BudgetItemType.Expense).GroupBy(l => l.CategoryName).OrderBy(g => g.Key))
     {
-        <section class="panel">
+        <section class="panel section-expense">
             <header class="panel-header">
-                <h2>@group.Key</h2>
-                <span>@Money(group.Sum(l => l.ProjectedMonthlyAmount))</span>
+                <span class="pill expense">@group.Key</span>
+                <strong class="numeric text-negative">@Money(group.Sum(l => l.ProjectedMonthlyAmount))</strong>
             </header>
             <div class="line-list">
                 @foreach (var line in group.OrderBy(l => l.BudgetItemName))
@@ -69,8 +72,11 @@ else
                             <strong>@line.BudgetItemName</strong>
                             <span>@UiText.FrequencyLabel(line.Frequency) · Basis @Money(line.Amount)</span>
                         </div>
-                        <span class="pill neutral">@LineTag(line)</span>
-                        <strong class="numeric">@Money(line.ProjectedMonthlyAmount)</strong>
+                        @if (LineTag(line) is { Length: > 0 } expTag)
+                        {
+                            <span class="pill neutral">@expTag</span>
+                        }
+                        <strong class="numeric @(line.ProjectedMonthlyAmount == 0 ? null : "text-negative")">@Money(line.ProjectedMonthlyAmount)</strong>
                     </div>
                 }
             </div>
@@ -112,19 +118,20 @@ else
         await LoadAsync();
     }
 
+    // Tag nur für „lumpy" Kosten (Quartal/Jahr/Einmalig); für reine Monatsposten kein Tag (wie in der Vorlage).
     private string LineTag(BudgetProjectionLine line)
     {
-        if (ViewMode == BudgetViewMode.Budget && line.Frequency is BudgetFrequency.Quarterly or BudgetFrequency.Yearly)
+        if (line.Frequency == BudgetFrequency.Monthly)
+        {
+            return string.Empty;
+        }
+
+        if (ViewMode == BudgetViewMode.Budget)
         {
             return "anteilig";
         }
 
-        if (ViewMode == BudgetViewMode.Cashflow && line.Frequency != BudgetFrequency.Monthly)
-        {
-            return line.IsDue ? "fällig" : "nicht fällig";
-        }
-
-        return line.Type == BudgetItemType.Income ? "laufend" : "monatlich";
+        return line.IsDue ? "fällig" : "nicht fällig";
     }
 
     private string Money(decimal value) => value.ToString("C", culture);
