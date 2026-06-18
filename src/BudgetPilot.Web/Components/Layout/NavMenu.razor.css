@@ -1,25 +1,26 @@
 .brand-block {
-    margin-bottom: 28px;
+    margin-bottom: 22px;
+    padding: 6px 8px;
 }
 
 .brand {
     display: flex;
     align-items: center;
-    gap: 12px;
-    color: #fffaf0;
+    gap: 11px;
+    color: var(--ink);
     text-decoration: none;
 }
 
 .brand-mark {
-    width: 46px;
-    height: 46px;
+    width: 34px;
+    height: 34px;
     display: grid;
     place-items: center;
-    border-radius: 8px;
-    background: #f3c969;
-    color: #18352f;
+    border-radius: 11px;
+    background: var(--accent);
+    color: #fff;
     font-weight: 800;
-    font-variant-numeric: tabular-nums;
+    font-size: 17px;
 }
 
 .brand strong,
@@ -27,52 +28,66 @@
     display: block;
 }
 
+.brand strong {
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+}
+
 .brand small {
-    color: #bfd2c7;
-    margin-top: 2px;
+    color: var(--soft);
+    font-size: 11px;
+    font-weight: 600;
+    margin-top: 1px;
 }
 
 .nav-list {
     display: grid;
-    gap: 8px;
+    gap: 3px;
 }
 
 .nav-link {
-    min-height: 46px;
+    min-height: 42px;
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 0 12px;
-    border-radius: 8px;
-    color: #dce9df;
+    padding: 0 14px;
+    border-radius: 12px;
+    color: var(--muted);
     text-decoration: none;
-    font-weight: 650;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: background .15s, color .15s;
 }
 
 .nav-link span {
-    width: 22px;
+    width: 18px;
     text-align: center;
+    color: var(--soft);
 }
 
 .nav-link:hover {
-    background: rgba(255, 255, 255, 0.08);
-    color: white;
+    background: #EFE7D8;
+    color: var(--ink);
 }
 
 .nav-link.active {
-    background: #f5efe1;
-    color: #18352f;
+    background: var(--accent-soft);
+    color: var(--accent);
+}
+
+.nav-link.active span {
+    color: var(--accent);
 }
 
 .sidebar-note {
     position: absolute;
-    left: 22px;
-    right: 22px;
+    left: 16px;
+    right: 16px;
     bottom: 22px;
     padding: 14px;
-    border: 1px solid rgba(255, 255, 255, 0.16);
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.07);
+    border-radius: 14px;
+    background: var(--surface-strong);
 }
 
 .sidebar-note span,
@@ -81,6 +96,13 @@
 }
 
 .sidebar-note span {
-    color: #bfd2c7;
-    font-size: 0.78rem;
+    color: var(--muted);
+    font-size: 0.74rem;
+    font-weight: 700;
+}
+
+.sidebar-note strong {
+    font-size: 0.95rem;
+    font-weight: 800;
+    margin-top: 2px;
 }
