@@ -30,6 +30,7 @@ internal static class DtoMapper
             Id = item.Id,
             Name = item.Name,
             Description = item.Description,
+            Owner = item.Owner,
             Type = item.Type,
             CategoryId = item.CategoryId,
             CategoryName = item.Category?.Name ?? string.Empty,

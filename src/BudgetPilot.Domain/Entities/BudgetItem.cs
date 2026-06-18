@@ -11,6 +11,10 @@ public class BudgetItem
     public Guid Id { get; set; }
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
+
+    /// <summary>Optionaler Inhaber/Person (z. B. "Mann", "Frau", "Gemeinsam") für Auswertung pro Person.</summary>
+    public string? Owner { get; set; }
+
     public BudgetItemType Type { get; set; }
     public Guid CategoryId { get; set; }
     public Category Category { get; set; } = null!;

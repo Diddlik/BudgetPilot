@@ -39,6 +39,7 @@ public sealed class BudgetItemService : IBudgetItemService
             Id = Guid.NewGuid(),
             Name = request.Name.Trim(),
             Description = request.Description,
+            Owner = string.IsNullOrWhiteSpace(request.Owner) ? null : request.Owner.Trim(),
             Type = request.Type,
             CategoryId = request.CategoryId,
             IsActive = true,
@@ -79,6 +80,7 @@ public sealed class BudgetItemService : IBudgetItemService
 
         item.Name = request.Name.Trim();
         item.Description = request.Description;
+        item.Owner = string.IsNullOrWhiteSpace(request.Owner) ? null : request.Owner.Trim();
         item.Type = request.Type;
         item.CategoryId = request.CategoryId;
         item.UpdatedAt = DateTime.UtcNow;

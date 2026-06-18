@@ -28,6 +28,9 @@ public class BudgetItemConfiguration : IEntityTypeConfiguration<BudgetItem>
         builder.Property(b => b.Description)
             .HasMaxLength(500);
 
+        builder.Property(b => b.Owner)
+            .HasMaxLength(100);
+
         // Relationship: Category 1→* BudgetItem
         // Category darf NICHT gelöscht werden solange Items existieren (Restrict)
         builder.HasOne(b => b.Category)

@@ -42,6 +42,16 @@
             </label>
 
             <label>
+                Inhaber (optional)
+                <input class="field" list="owner-suggestions" placeholder="z. B. Mann, Frau, Gemeinsam" @bind="Owner" disabled="@IsVersionMode" />
+                <datalist id="owner-suggestions">
+                    <option value="Mann" />
+                    <option value="Frau" />
+                    <option value="Gemeinsam" />
+                </datalist>
+            </label>
+
+            <label>
                 Betrag (EUR)
                 <input class="field numeric" inputmode="decimal" @bind="AmountText" @bind:event="oninput" />
             </label>
@@ -98,6 +108,7 @@
     private readonly CultureInfo culture = CultureInfo.GetCultureInfo("de-DE");
     private List<CategoryDto> activeCategories = [];
     private string Name { get; set; } = string.Empty;
+    private string? Owner { get; set; }
     private BudgetItemType Type { get; set; } = BudgetItemType.Expense;
     private Guid CategoryId { get; set; }
     private string AmountText { get; set; } = "0,00";
@@ -132,6 +143,7 @@
     {
         var current = Item?.Versions.OrderByDescending(v => v.ValidFrom).FirstOrDefault(v => v.IsCurrent) ?? Item?.Versions.OrderByDescending(v => v.ValidFrom).FirstOrDefault();
         Name = Item?.Name ?? string.Empty;
+        Owner = Item?.Owner;
         Type = Item?.Type ?? BudgetItemType.Expense;
         CategoryId = PresetCategoryId ?? Item?.CategoryId ?? activeCategories.FirstOrDefault()?.Id ?? Guid.Empty;
         AmountText = (current?.Amount ?? 0m).ToString("N2", culture);
@@ -158,7 +170,7 @@
             BudgetItemDto? saved = null;
             if (Mode == "Edit" && Item is not null)
             {
-                saved = await Items.UpdateMetadataAsync(Item.Id, new UpdateBudgetItemMetadataRequest(Name.Trim(), Item.Description, Type, CategoryId));
+                saved = await Items.UpdateMetadataAsync(Item.Id, new UpdateBudgetItemMetadataRequest(Name.Trim(), Item.Description, Type, CategoryId, Owner));
                 await Items.UpdateCurrentVersionAsync(Item.Id, new UpdateVersionRequest(amount, Frequency, validFrom, null, paymentMonth, Note));
                 saved = await Items.GetByIdAsync(Item.Id);
             }
@@ -169,7 +181,7 @@
             }
             else
             {
-                saved = await Items.CreateAsync(new CreateBudgetItemRequest(Name.Trim(), null, Type, CategoryId, amount, Frequency, validFrom, null, paymentMonth, Note));
+                saved = await Items.CreateAsync(new CreateBudgetItemRequest(Name.Trim(), null, Type, CategoryId, amount, Frequency, validFrom, null, paymentMonth, Note, Owner));
             }
 
             await OnSaved.InvokeAsync(saved);

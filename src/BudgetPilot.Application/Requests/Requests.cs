@@ -13,14 +13,16 @@ public record CreateBudgetItemRequest(
     DateOnly ValidFrom,
     int? PaymentDay,
     int? PaymentMonth,
-    string? Note);
+    string? Note,
+    string? Owner = null);
 
 /// <summary>Ändert nur die Stammdaten einer Position (Edit-Modus, ohne Versionierung).</summary>
 public record UpdateBudgetItemMetadataRequest(
     string Name,
     string? Description,
     BudgetItemType Type,
-    Guid CategoryId);
+    Guid CategoryId,
+    string? Owner = null);
 
 /// <summary>Hängt eine neue Version ab Stichtag an und beendet die bisher offene Version (§4.3).</summary>
 public record CreateBudgetItemVersionRequest(
