@@ -280,15 +280,25 @@ h2 {
     margin-bottom: 16px;
 }
 
-/* Monatsübersicht: Einnahmen grünlich, Ausgaben rötlich markiert */
-.panel.section-income {
-    border-left: 4px solid var(--income);
-    background: linear-gradient(180deg, var(--income-soft) 0, var(--surface) 64px);
+/* Monatsübersicht: schlichte weiße Karten wie in der Vorlage –
+   nur die Pille trägt Farbe (Einnahmen grün, Kategorie orange),
+   Beträge bleiben außer den Einnahmen tintenschwarz. */
+.panel.section-income,
+.panel.section-expense {
+    padding: 6px 20px 14px;
 }
 
-.panel.section-expense {
-    border-left: 4px solid var(--expense);
-    background: linear-gradient(180deg, var(--expense-soft) 0, var(--surface) 64px);
+.panel.section-income .panel-header,
+.panel.section-expense .panel-header {
+    align-items: center;
+    margin-bottom: 0;
+    padding: 14px 0 10px;
+    border-bottom: 1px solid var(--line);
+}
+
+.panel.section-income .line-list,
+.panel.section-expense .line-list {
+    gap: 0;
 }
 
 .panel-header {
@@ -395,6 +405,22 @@ h2 {
     grid-template-columns: minmax(0, 1fr) auto auto;
     border-bottom: 1px solid #F4EDDF;
     border-radius: 0;
+}
+
+/* Name oben, Frequenz klein darunter (wie in der Vorlage) */
+.budget-line > div:first-child {
+    display: grid;
+    gap: 2px;
+}
+
+.budget-line > div:first-child strong {
+    font-size: 0.9rem;
+    font-weight: 700;
+}
+
+.budget-line > div:first-child span {
+    font-size: 0.78rem;
+    font-weight: 600;
 }
 
 .muted-line,

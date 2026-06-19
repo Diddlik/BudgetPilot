@@ -37,7 +37,6 @@ else
     <section class="panel section-income">
         <header class="panel-header">
             <span class="pill income">Einnahmen</span>
-            <strong class="numeric text-positive">@Money(projection.Lines.Where(l => l.Type == BudgetItemType.Income).Sum(l => l.ProjectedMonthlyAmount))</strong>
         </header>
         <div class="line-list">
             @foreach (var line in projection.Lines.Where(l => l.Type == BudgetItemType.Income))
@@ -62,7 +61,7 @@ else
         <section class="panel section-expense">
             <header class="panel-header">
                 <span class="pill expense">@group.Key</span>
-                <strong class="numeric text-negative">@Money(group.Sum(l => l.ProjectedMonthlyAmount))</strong>
+                <strong class="numeric">@Money(group.Sum(l => l.ProjectedMonthlyAmount))</strong>
             </header>
             <div class="line-list">
                 @foreach (var line in group.OrderBy(l => l.BudgetItemName))
@@ -70,13 +69,13 @@ else
                     <div class="budget-line @(line.ProjectedMonthlyAmount == 0 ? "muted-line" : null)">
                         <div>
                             <strong>@line.BudgetItemName</strong>
-                            <span>@UiText.FrequencyLabel(line.Frequency) · Basis @Money(line.Amount)</span>
+                            <span>@UiText.FrequencyLabel(line.Frequency)</span>
                         </div>
                         @if (LineTag(line) is { Length: > 0 } expTag)
                         {
                             <span class="pill neutral">@expTag</span>
                         }
-                        <strong class="numeric @(line.ProjectedMonthlyAmount == 0 ? null : "text-negative")">@Money(line.ProjectedMonthlyAmount)</strong>
+                        <strong class="numeric @(line.ProjectedMonthlyAmount == 0 ? "muted" : null)">@Money(line.ProjectedMonthlyAmount)</strong>
                     </div>
                 }
             </div>
