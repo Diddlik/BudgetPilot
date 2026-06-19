@@ -1,8 +1,10 @@
+using System.Globalization;
 using BudgetPilot.Application.Abstractions;
 using BudgetPilot.Application.Dtos;
 using BudgetPilot.Application.Requests;
 using BudgetPilot.Application.Services.Mapping;
 using BudgetPilot.Domain.Entities;
+using BudgetPilot.Domain.Enums;
 using BudgetPilot.Domain.Exceptions;
 using BudgetPilot.Domain.Rules;
 
@@ -14,16 +16,31 @@ namespace BudgetPilot.Application.Services;
 /// </summary>
 public sealed class BudgetItemService : IBudgetItemService
 {
+    private static readonly CultureInfo De = CultureInfo.GetCultureInfo("de-DE");
+
     private readonly IBudgetItemRepository _items;
     private readonly ICategoryRepository _categories;
     private readonly IUnitOfWork _uow;
+    private readonly IAuditLog _audit;
 
-    public BudgetItemService(IBudgetItemRepository items, ICategoryRepository categories, IUnitOfWork uow)
+    public BudgetItemService(IBudgetItemRepository items, ICategoryRepository categories, IUnitOfWork uow, IAuditLog audit)
     {
         _items = items;
         _categories = categories;
         _uow = uow;
+        _audit = audit;
     }
+
+    private static string Money(decimal value) => value.ToString("C", De);
+
+    private static string Freq(BudgetFrequency frequency) => frequency switch
+    {
+        BudgetFrequency.Monthly => "monatlich",
+        BudgetFrequency.Quarterly => "quartalsweise",
+        BudgetFrequency.Yearly => "jährlich",
+        BudgetFrequency.Once => "einmalig",
+        _ => frequency.ToString()
+    };
 
     public async Task<BudgetItemDto> CreateAsync(CreateBudgetItemRequest request, CancellationToken ct = default)
     {
@@ -67,6 +84,11 @@ public sealed class BudgetItemService : IBudgetItemService
 
         // Kategoriename für das DTO nachladen, falls die Navigation nicht gesetzt ist.
         await EnsureCategoryNameAsync(item, ct).ConfigureAwait(false);
+
+        await _audit.RecordAsync(AuditAction.Created, "BudgetItem", item.Id, item.Name,
+            $"{Money(request.Amount)} · {Freq(request.Frequency)}, gültig ab {request.ValidFrom:dd.MM.yyyy}", ct)
+            .ConfigureAwait(false);
+
         return DtoMapper.ToDto(item);
     }
 
@@ -77,6 +99,10 @@ public sealed class BudgetItemService : IBudgetItemService
 
         var item = await GetItemOrThrowAsync(id, ct).ConfigureAwait(false);
         await EnsureActiveCategoryAsync(request.CategoryId, ct).ConfigureAwait(false);
+
+        var oldName = item.Name;
+        var oldType = item.Type;
+        var oldCategoryId = item.CategoryId;
 
         item.Name = request.Name.Trim();
         item.Description = request.Description;
@@ -89,6 +115,19 @@ public sealed class BudgetItemService : IBudgetItemService
         await _uow.SaveChangesAsync(ct).ConfigureAwait(false);
 
         await EnsureCategoryNameAsync(item, ct).ConfigureAwait(false);
+
+        var changes = new List<string>();
+        if (!string.Equals(oldName, item.Name, StringComparison.Ordinal))
+            changes.Add($"Name: '{oldName}' → '{item.Name}'");
+        if (oldType != item.Type)
+            changes.Add($"Typ: {(oldType == BudgetItemType.Income ? "Einnahme" : "Ausgabe")} → {(item.Type == BudgetItemType.Income ? "Einnahme" : "Ausgabe")}");
+        if (oldCategoryId != item.CategoryId)
+            changes.Add($"Kategorie geändert zu '{item.Category?.Name}'");
+
+        await _audit.RecordAsync(AuditAction.Updated, "BudgetItem", item.Id, item.Name,
+            changes.Count > 0 ? string.Join(" · ", changes) : "Stammdaten aktualisiert", ct)
+            .ConfigureAwait(false);
+
         return DtoMapper.ToDto(item);
     }
 
@@ -99,6 +138,8 @@ public sealed class BudgetItemService : IBudgetItemService
 
         BudgetValidation.ValidateVersionValues(
             request.Amount, request.ValidFrom, validTo: null, request.PaymentDay, request.PaymentMonth);
+
+        var previousAmount = DtoMapper.CurrentVersion(item)?.Amount;
 
         // §4.3: bisher offene Version beenden (ValidTo = D - 1 Tag), neue offene Version anhängen.
         var previousDay = request.ValidFrom.AddDays(-1);
@@ -134,6 +175,13 @@ public sealed class BudgetItemService : IBudgetItemService
         _items.Update(item);
         await _uow.SaveChangesAsync(ct).ConfigureAwait(false);
 
+        var change = previousAmount is { } prevAmt
+            ? $"{Money(prevAmt)} → {Money(request.Amount)}"
+            : Money(request.Amount);
+        await _audit.RecordAsync(AuditAction.VersionAdded, "BudgetItem", item.Id, item.Name,
+            $"{change} · {Freq(request.Frequency)}, neue Version ab {request.ValidFrom:dd.MM.yyyy}", ct)
+            .ConfigureAwait(false);
+
         return DtoMapper.ToDto(version, isCurrent: true);
     }
 
@@ -151,6 +199,8 @@ public sealed class BudgetItemService : IBudgetItemService
         // In-place Änderung darf keine Überschneidung mit den anderen Versionen erzeugen.
         BudgetValidation.EnsureNoOverlap(item.Versions, request.ValidFrom, current.ValidTo, ignoreVersionId: current.Id);
 
+        var beforeAmount = current.Amount;
+
         current.Amount = request.Amount;
         current.Frequency = request.Frequency;
         current.ValidFrom = request.ValidFrom;
@@ -161,6 +211,13 @@ public sealed class BudgetItemService : IBudgetItemService
 
         _items.Update(item);
         await _uow.SaveChangesAsync(ct).ConfigureAwait(false);
+
+        var change = beforeAmount != request.Amount
+            ? $"{Money(beforeAmount)} → {Money(request.Amount)}"
+            : Money(request.Amount);
+        await _audit.RecordAsync(AuditAction.Updated, "BudgetItem", item.Id, item.Name,
+            $"{change} · {Freq(request.Frequency)} (laufende Version geändert)", ct)
+            .ConfigureAwait(false);
     }
 
     public async Task<IReadOnlyList<BudgetItemDto>> GetAllAsync(CancellationToken ct = default)
@@ -182,6 +239,9 @@ public sealed class BudgetItemService : IBudgetItemService
         item.UpdatedAt = DateTime.UtcNow;
         _items.Update(item);
         await _uow.SaveChangesAsync(ct).ConfigureAwait(false);
+
+        await _audit.RecordAsync(AuditAction.Deactivated, "BudgetItem", item.Id, item.Name, null, ct)
+            .ConfigureAwait(false);
     }
 
     public async Task ReactivateAsync(Guid id, CancellationToken ct = default)
@@ -191,13 +251,20 @@ public sealed class BudgetItemService : IBudgetItemService
         item.UpdatedAt = DateTime.UtcNow;
         _items.Update(item);
         await _uow.SaveChangesAsync(ct).ConfigureAwait(false);
+
+        await _audit.RecordAsync(AuditAction.Reactivated, "BudgetItem", item.Id, item.Name, null, ct)
+            .ConfigureAwait(false);
     }
 
     public async Task DeleteAsync(Guid id, CancellationToken ct = default)
     {
         var item = await GetItemOrThrowAsync(id, ct).ConfigureAwait(false);
+        var name = item.Name;
         _items.Remove(item);
         await _uow.SaveChangesAsync(ct).ConfigureAwait(false);
+
+        await _audit.RecordAsync(AuditAction.Deleted, "BudgetItem", id, name, "Position mit allen Versionen entfernt", ct)
+            .ConfigureAwait(false);
     }
 
     private async Task<BudgetItem> GetItemOrThrowAsync(Guid id, CancellationToken ct)

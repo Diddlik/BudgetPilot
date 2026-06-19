@@ -18,7 +18,8 @@ public sealed class BudgetItemServiceTests
         var svc = new BudgetItemService(
             new FakeBudgetItemRepository(store),
             new FakeCategoryRepository(store),
-            new FakeUnitOfWork(store));
+            new FakeUnitOfWork(store),
+            new NoopAuditLog());
         return (svc, store, cat);
     }
 

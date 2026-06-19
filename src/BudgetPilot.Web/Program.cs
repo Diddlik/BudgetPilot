@@ -59,6 +59,9 @@ builder.Services.AddAuthorization();
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
+// Aktueller Benutzer für das Änderungsprotokoll (liest den Blazor-Circuit-Auth-State).
+builder.Services.AddScoped<BudgetPilot.Application.Abstractions.ICurrentUser, BudgetPilot.Web.Services.CurrentUser>();
+
 var app = builder.Build();
 
 // Apply migrations, seed demo data (Spec §12) and the single login account on startup.

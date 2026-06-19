@@ -1,0 +1,80 @@
+@page "/protokoll"
+@rendermode InteractiveServer
+@inject IAuditLog Audit
+
+<PageTitle>Aktivität · BudgetPilot</PageTitle>
+
+<header class="page-header">
+    <div>
+        <p class="eyebrow">Änderungsprotokoll</p>
+        <h1>Aktivität</h1>
+    </div>
+    <button class="button secondary" @onclick="LoadAsync">Aktualisieren</button>
+</header>
+
+@if (entries is null)
+{
+    <p>Lade Protokoll ...</p>
+}
+else if (entries.Count == 0)
+{
+    <section class="panel">
+        <p class="muted">Noch keine Änderungen protokolliert.</p>
+    </section>
+}
+else
+{
+    <section class="panel">
+        <header class="panel-header">
+            <h2>Wer hat was angepasst</h2>
+            <span>Neueste zuerst</span>
+        </header>
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Zeitpunkt</th>
+                        <th>Benutzer</th>
+                        <th>Aktion</th>
+                        <th>Betroffen</th>
+                        <th>Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var e in entries)
+                    {
+                        <tr>
+                            <td class="numeric">@e.TimestampUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm", culture)</td>
+                            <td>@e.UserName</td>
+                            <td><span class="pill @ActionPill(e.Action)">@UiText.AuditActionLabel(e.Action)</span></td>
+                            <td>@UiText.EntityTypeLabel(e.EntityType) „@e.EntityName"</td>
+                            <td class="muted">@e.Details</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+}
+
+@code {
+    private readonly CultureInfo culture = CultureInfo.GetCultureInfo("de-DE");
+    private IReadOnlyList<AuditEntryDto>? entries;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        entries = await Audit.GetRecentAsync(300);
+    }
+
+    private static string ActionPill(AuditAction action) => action switch
+    {
+        AuditAction.Created => "income",
+        AuditAction.VersionAdded => "income",
+        AuditAction.Reactivated => "income",
+        AuditAction.Deleted => "expense",
+        AuditAction.Deactivated => "expense",
+        _ => "neutral"
+    };
+}

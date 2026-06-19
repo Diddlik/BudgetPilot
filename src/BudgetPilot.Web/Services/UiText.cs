@@ -26,4 +26,23 @@ public static class UiText
         BudgetViewMode.Cashflow => "Cashflow-Sicht",
         _ => viewMode.ToString()
     };
+
+    public static string AuditActionLabel(AuditAction action) => action switch
+    {
+        AuditAction.Created => "angelegt",
+        AuditAction.Updated => "geändert",
+        AuditAction.VersionAdded => "neue Version",
+        AuditAction.Deactivated => "deaktiviert",
+        AuditAction.Reactivated => "reaktiviert",
+        AuditAction.Deleted => "gelöscht",
+        _ => action.ToString()
+    };
+
+    public static string EntityTypeLabel(string entityType) => entityType switch
+    {
+        "BudgetItem" => "Position",
+        "Category" => "Kategorie",
+        "User" => "Benutzer",
+        _ => entityType
+    };
 }

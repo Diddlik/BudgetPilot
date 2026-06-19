@@ -20,6 +20,7 @@ public class BudgetPilotDbContext : IdentityDbContext<IdentityUser>
     public DbSet<BudgetItemVersion> BudgetItemVersions => Set<BudgetItemVersion>();
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<ActualTransaction> ActualTransactions => Set<ActualTransaction>();
+    public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

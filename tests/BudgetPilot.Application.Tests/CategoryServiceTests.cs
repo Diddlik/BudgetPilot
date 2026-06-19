@@ -16,7 +16,8 @@ public sealed class CategoryServiceTests
         var svc = new CategoryService(
             new FakeCategoryRepository(store),
             new FakeBudgetItemRepository(store),
-            new FakeUnitOfWork(store));
+            new FakeUnitOfWork(store),
+            new NoopAuditLog());
         return (svc, store);
     }
 

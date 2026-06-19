@@ -36,8 +36,9 @@ public sealed class ScheduleAndMultiYearTests : IAsyncLifetime
         var itemRepo = new BudgetItemRepository(_db);
         var catRepo = new CategoryRepository(_db);
         var uow = new UnitOfWork(_db);
-        _items = new BudgetItemService(itemRepo, catRepo, uow);
-        _categories = new CategoryService(catRepo, itemRepo, uow);
+        var audit = new NoopAuditLog();
+        _items = new BudgetItemService(itemRepo, catRepo, uow, audit);
+        _categories = new CategoryService(catRepo, itemRepo, uow, audit);
         _projection = new BudgetProjectionService(itemRepo);
     }
 

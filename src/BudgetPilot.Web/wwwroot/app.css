@@ -825,6 +825,11 @@ dd {
     font-weight: 600;
 }
 
+.alert.success {
+    color: var(--income);
+    background: var(--income-soft);
+}
+
 /* Sidebar-Navigation — global gehalten, damit die Regeln den von <NavLink>
    gerenderten <a> sicher treffen (Scoped-CSS-Attribut landet dort nicht) und
    Bootstraps .nav-link { display:block } schlagen (.sidebar erhöht Spezifität). */

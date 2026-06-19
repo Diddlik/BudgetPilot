@@ -1,0 +1,184 @@
+@page "/benutzer"
+@rendermode InteractiveServer
+@inject UserManager<IdentityUser> UserMgr
+@inject IAuditLog Audit
+
+<PageTitle>Benutzer · BudgetPilot</PageTitle>
+
+<header class="page-header">
+    <div>
+        <p class="eyebrow">Konten</p>
+        <h1>Benutzer</h1>
+    </div>
+</header>
+
+@if (error is not null)
+{
+    <div class="alert">@error</div>
+}
+@if (info is not null)
+{
+    <div class="alert success">@info</div>
+}
+
+<section class="panel">
+    <header class="panel-header">
+        <h2>Neuen Benutzer anlegen</h2>
+    </header>
+    <div class="inline-form">
+        <label>E-Mail
+            <input class="field" @bind="newEmail" placeholder="name@haushalt.de" />
+        </label>
+        <label>Passwort
+            <input class="field" type="password" @bind="newPassword" placeholder="mind. 8 Zeichen" />
+        </label>
+        <button class="button primary" @onclick="CreateAsync">Anlegen</button>
+    </div>
+</section>
+
+<section class="panel">
+    <header class="panel-header">
+        <h2>Vorhandene Benutzer</h2>
+        <span>@users.Count</span>
+    </header>
+    <div class="line-list">
+        @foreach (var u in users)
+        {
+            <div class="budget-line">
+                <div>
+                    <strong>@u.Email @(u.Id == currentUserId ? "· du" : null)</strong>
+                    <span>angelegt als Login-Konto</span>
+                </div>
+                <button class="button secondary" @onclick="() => ToggleReset(u.Id)">Passwort</button>
+                <button class="button danger" @onclick="() => DeleteAsync(u.Id)" disabled="@(u.Id == currentUserId)">Löschen</button>
+            </div>
+            @if (resetTargetId == u.Id)
+            {
+                <div class="inline-form">
+                    <label>Neues Passwort für @u.Email
+                        <input class="field" type="password" @bind="resetPassword" placeholder="mind. 8 Zeichen" />
+                    </label>
+                    <button class="button primary" @onclick="() => ResetAsync(u.Id)">Speichern</button>
+                    <button class="button secondary" @onclick="() => ToggleReset(u.Id)">Abbrechen</button>
+                </div>
+            }
+        }
+    </div>
+</section>
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
+
+    private List<IdentityUser> users = [];
+    private string? currentUserId;
+    private string newEmail = string.Empty;
+    private string newPassword = string.Empty;
+    private string? resetTargetId;
+    private string resetPassword = string.Empty;
+    private string? error;
+    private string? info;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthState is not null)
+        {
+            var state = await AuthState;
+            currentUserId = UserMgr.GetUserId(state.User);
+        }
+        Load();
+    }
+
+    private void Load() => users = UserMgr.Users.OrderBy(u => u.Email).ToList();
+
+    private void ToggleReset(string id)
+    {
+        resetTargetId = resetTargetId == id ? null : id;
+        resetPassword = string.Empty;
+        error = info = null;
+    }
+
+    private async Task CreateAsync()
+    {
+        error = info = null;
+        var email = newEmail.Trim();
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            error = "E-Mail darf nicht leer sein.";
+            return;
+        }
+
+        var user = new IdentityUser { UserName = email, Email = email, EmailConfirmed = true };
+        var result = await UserMgr.CreateAsync(user, newPassword);
+        if (result.Succeeded)
+        {
+            await Audit.RecordAsync(AuditAction.Created, "User", ParseId(user.Id), email, "Login-Konto angelegt");
+            info = $"Benutzer „{email}\" wurde angelegt.";
+            newEmail = newPassword = string.Empty;
+            Load();
+        }
+        else
+        {
+            error = string.Join(" ", result.Errors.Select(e => e.Description));
+        }
+    }
+
+    private async Task DeleteAsync(string id)
+    {
+        error = info = null;
+        if (id == currentUserId)
+        {
+            error = "Du kannst dein eigenes Konto nicht löschen.";
+            return;
+        }
+        if (users.Count <= 1)
+        {
+            error = "Der letzte Benutzer kann nicht gelöscht werden.";
+            return;
+        }
+
+        var user = await UserMgr.FindByIdAsync(id);
+        if (user is null)
+        {
+            return;
+        }
+
+        var email = user.Email ?? user.UserName ?? id;
+        var result = await UserMgr.DeleteAsync(user);
+        if (result.Succeeded)
+        {
+            await Audit.RecordAsync(AuditAction.Deleted, "User", ParseId(id), email, "Login-Konto entfernt");
+            info = $"Benutzer „{email}\" wurde gelöscht.";
+            Load();
+        }
+        else
+        {
+            error = string.Join(" ", result.Errors.Select(e => e.Description));
+        }
+    }
+
+    private async Task ResetAsync(string id)
+    {
+        error = info = null;
+        var user = await UserMgr.FindByIdAsync(id);
+        if (user is null)
+        {
+            return;
+        }
+
+        var token = await UserMgr.GeneratePasswordResetTokenAsync(user);
+        var result = await UserMgr.ResetPasswordAsync(user, token, resetPassword);
+        if (result.Succeeded)
+        {
+            await Audit.RecordAsync(AuditAction.Updated, "User", ParseId(id), user.Email ?? id, "Passwort zurückgesetzt");
+            info = $"Passwort für „{user.Email}\" wurde aktualisiert.";
+            resetTargetId = null;
+            resetPassword = string.Empty;
+        }
+        else
+        {
+            error = string.Join(" ", result.Errors.Select(e => e.Description));
+        }
+    }
+
+    private static Guid ParseId(string id) => Guid.TryParse(id, out var g) ? g : Guid.Empty;
+}

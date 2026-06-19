@@ -56,6 +56,9 @@ public static class DependencyInjection
         // ── Unit of Work ────────────────────────────────────────────────
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
+        // ── Änderungsprotokoll ──────────────────────────────────────────
+        services.AddScoped<IAuditLog, Auditing.AuditLog>();
+
         // ── Seeder ──────────────────────────────────────────────────────
         services.AddScoped<DatabaseSeeder>();
 

@@ -3,6 +3,7 @@ using BudgetPilot.Application.Dtos;
 using BudgetPilot.Application.Requests;
 using BudgetPilot.Application.Services.Mapping;
 using BudgetPilot.Domain.Entities;
+using BudgetPilot.Domain.Enums;
 using BudgetPilot.Domain.Exceptions;
 
 namespace BudgetPilot.Application.Services;
@@ -13,12 +14,14 @@ public sealed class CategoryService : ICategoryService
     private readonly ICategoryRepository _categories;
     private readonly IBudgetItemRepository _items;
     private readonly IUnitOfWork _uow;
+    private readonly IAuditLog _audit;
 
-    public CategoryService(ICategoryRepository categories, IBudgetItemRepository items, IUnitOfWork uow)
+    public CategoryService(ICategoryRepository categories, IBudgetItemRepository items, IUnitOfWork uow, IAuditLog audit)
     {
         _categories = categories;
         _items = items;
         _uow = uow;
+        _audit = audit;
     }
 
     public async Task<CategoryDto> CreateAsync(CreateCategoryRequest request, CancellationToken ct = default)
@@ -36,6 +39,9 @@ public sealed class CategoryService : ICategoryService
 
         await _categories.AddAsync(category, ct).ConfigureAwait(false);
         await _uow.SaveChangesAsync(ct).ConfigureAwait(false);
+
+        await _audit.RecordAsync(AuditAction.Created, "Category", category.Id, category.Name, null, ct)
+            .ConfigureAwait(false);
 
         return DtoMapper.ToDto(category, itemCount: 0);
     }
@@ -66,11 +72,15 @@ public sealed class CategoryService : ICategoryService
             throw new DomainException("Kategoriename darf nicht leer sein.");
 
         var category = await GetCategoryOrThrowAsync(id, ct).ConfigureAwait(false);
+        var oldName = category.Name;
         category.Name = newName.Trim();
         category.UpdatedAt = DateTime.UtcNow;
 
         _categories.Update(category);
         await _uow.SaveChangesAsync(ct).ConfigureAwait(false);
+
+        await _audit.RecordAsync(AuditAction.Updated, "Category", category.Id, category.Name,
+            $"Name: '{oldName}' → '{category.Name}'", ct).ConfigureAwait(false);
     }
 
     public async Task DeactivateAsync(Guid id, CancellationToken ct = default)
@@ -81,6 +91,9 @@ public sealed class CategoryService : ICategoryService
 
         _categories.Update(category);
         await _uow.SaveChangesAsync(ct).ConfigureAwait(false);
+
+        await _audit.RecordAsync(AuditAction.Deactivated, "Category", category.Id, category.Name, null, ct)
+            .ConfigureAwait(false);
     }
 
     private async Task<Category> GetCategoryOrThrowAsync(Guid id, CancellationToken ct)

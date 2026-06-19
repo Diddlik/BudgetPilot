@@ -16,6 +16,17 @@ public enum BudgetFrequency
     Once = 4
 }
 
+/// <summary>Art einer protokollierten Änderung (Änderungsprotokoll, „wer hat was angepasst").</summary>
+public enum AuditAction
+{
+    Created = 1,
+    Updated = 2,
+    VersionAdded = 3,
+    Deactivated = 4,
+    Reactivated = 5,
+    Deleted = 6
+}
+
 /// <summary>Berechnungsart der Projektion.</summary>
 public enum BudgetViewMode
 {
