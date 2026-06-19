@@ -41,6 +41,9 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
+      # containrrr/watchtower pins the old Docker API 1.25, which Docker Engine 28+
+      # rejects ("minimum supported API version is 1.44"). Force a modern version.
+      - DOCKER_API_VERSION=1.44
       # Only touch containers we explicitly labelled (not the proxy, not itself).
       - WATCHTOWER_LABEL_ENABLE=true
       # Remove the superseded image after a successful update.
