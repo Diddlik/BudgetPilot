@@ -1,0 +1,52 @@
+# Production runtime that pulls the prebuilt image from GHCR (built by
+# .github/workflows/docker.yml) instead of building on the server, and
+# auto-updates via Watchtower. Pair it with your reverse proxy (Nginx Proxy
+# Manager or Caddy) exactly as before — this file only runs the app + updater.
+#
+# First-time bring-up on the server:
+#   1. cp .env.example .env   &&  edit BP_AUTH_EMAIL / BP_AUTH_PASSWORD / APP_PORT
+#   2. docker compose -f docker-compose.deploy.yml up -d
+#
+# After that you never touch the server again: every push to main rebuilds the
+# image in GitHub Actions; Watchtower notices the new :latest within a few
+# minutes, backs up the SQLite db, pulls it and recreates the container.
+# The ./data volume (database) survives container recreation.
+services:
+  budgetpilot:
+    image: ${BP_IMAGE:-ghcr.io/diddlik/budgetpilot:latest}
+    container_name: budgetpilot
+    pull_policy: always
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - Database__Provider=Sqlite
+      - Database__ConnectionString=Data Source=/app/data/budgetpilot.db
+      # Single private login account (seeded on first start). Set these in .env.
+      - Auth__Email=${BP_AUTH_EMAIL:?set BP_AUTH_EMAIL in .env}
+      - Auth__Password=${BP_AUTH_PASSWORD:?set BP_AUTH_PASSWORD in .env}
+    restart: unless-stopped
+    labels:
+      # Only containers with this label are managed by Watchtower (below).
+      - "com.centurylinklabs.watchtower.enable=true"
+      # Back up the SQLite db inside the old container before it is replaced,
+      # so a bad auto-applied EF migration can be rolled back.
+      - "com.centurylinklabs.watchtower.lifecycle.pre-update=/bin/sh -c \"cp /app/data/budgetpilot.db /app/data/budgetpilot.$$(date +%Y%m%d-%H%M%S).db.bak || true\""
+
+  watchtower:
+    image: containrrr/watchtower
+    container_name: budgetpilot-watchtower
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      # Only touch containers we explicitly labelled (not the proxy, not itself).
+      - WATCHTOWER_LABEL_ENABLE=true
+      # Remove the superseded image after a successful update.
+      - WATCHTOWER_CLEANUP=true
+      # Run the pre-update backup hook above.
+      - WATCHTOWER_LIFECYCLE_HOOKS=true
+      # Check GHCR for a new :latest every 5 minutes.
+      - WATCHTOWER_POLL_INTERVAL=300
+    restart: unless-stopped

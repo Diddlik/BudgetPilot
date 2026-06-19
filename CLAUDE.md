@@ -32,6 +32,18 @@ Internet exposure: Caddy reverse proxy (`docker-compose.prod.yml` + `Caddyfile`,
 TLS via Let's Encrypt); the app honours `X-Forwarded-Proto` (`UseForwardedHeaders`).
 Secrets live in `.env` (gitignored; see `.env.example`).
 
+**CI/CD & auto-update:** `.github/workflows/docker.yml` builds the image on every
+push to `main` and publishes it to GHCR as `ghcr.io/diddlik/budgetpilot:latest`
+(+ a `sha-<commit>` tag for rollback). The production server does **not** build —
+it runs `docker-compose.deploy.yml`, which pulls the prebuilt image and runs a
+**Watchtower** sidecar that polls GHCR every 5 min, backs up the SQLite db
+(pre-update lifecycle hook), pulls the new `:latest` and recreates the container
+(the `./data` volume persists). EF migrations run on startup, so updates are
+schema-self-applying. The older "build on the server" path (`docker-compose.npm.yml`
+/ `docker-compose.prod.yml` with `build: .` + `scripts/deploy.sh`) still works and
+is the fallback. GHCR package visibility must be set to **public** once (anonymous
+pull, no registry login on the server).
+
 Code, identifiers, and enums are English; user-facing UI text and the specs are
 German. Money is `decimal`, business dates are `DateOnly`.
 
