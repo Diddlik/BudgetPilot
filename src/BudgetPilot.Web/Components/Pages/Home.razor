@@ -6,11 +6,16 @@
 
 <header class="page-header">
     <div>
-        <p class="eyebrow">Aktueller Monat</p>
+        <p class="eyebrow">@(yearScope ? "Aktuelles Jahr" : "Aktueller Monat")</p>
         <h1>Dashboard</h1>
     </div>
-    <span class="date-chip">@monthLabel</span>
+    <span class="date-chip">@(yearScope ? yearLabel : monthLabel)</span>
 </header>
+
+<div class="segmented">
+    <button class="@(yearScope ? null : "active")" @onclick="() => SetScope(false)">Aktueller Monat</button>
+    <button class="@(yearScope ? "active" : null)" @onclick="() => SetScope(true)">Aktuelles Jahr</button>
+</div>
 
 @if (month is null)
 {
@@ -21,15 +26,15 @@ else
     <section class="kpi-grid">
         <article class="kpi-card income">
             <span>Einnahmen</span>
-            <strong>@Money(month.TotalIncome)</strong>
+            <strong>@Money(DispIncome)</strong>
         </article>
         <article class="kpi-card expense">
             <span>Ausgaben</span>
-            <strong>@Money(month.TotalExpense)</strong>
+            <strong>@Money(DispExpense)</strong>
         </article>
-        <article class="kpi-card balance @(month.Balance >= 0 ? "positive" : "negative")">
+        <article class="kpi-card balance @(DispBalance >= 0 ? "positive" : "negative")">
             <span>Saldo</span>
-            <strong>@Money(month.Balance)</strong>
+            <strong>@Money(DispBalance)</strong>
         </article>
     </section>
 
@@ -37,13 +42,13 @@ else
         <article class="panel">
             <header class="panel-header">
                 <h2>Ausgaben nach Kategorie</h2>
-                <span>Budget-Sicht</span>
+                <span>Budget-Sicht · @(yearScope ? "Jahr" : "Monat")</span>
             </header>
 
             <div class="bar-list">
-                @foreach (var category in month.Categories.OrderByDescending(c => c.TotalAmount))
+                @foreach (var category in DispCategories.OrderByDescending(c => c.TotalAmount))
                 {
-                    var width = month.TotalExpense == 0 ? 0 : decimal.ToInt32(decimal.Round(category.TotalAmount / month.TotalExpense * 100m));
+                    var width = DispExpense == 0 ? 0 : decimal.ToInt32(decimal.Round(category.TotalAmount / DispExpense * 100m));
                     <div class="bar-row">
                         <div>
                             <strong>@category.CategoryName</strong>
@@ -89,14 +94,28 @@ else
 @code {
     private readonly CultureInfo culture = CultureInfo.GetCultureInfo("de-DE");
     private MonthlyBudgetProjectionDto? month;
+    private YearlyBudgetProjectionDto? year;
     private List<NextPayment> upcoming = [];
     private string monthLabel = string.Empty;
+    private string yearLabel = string.Empty;
+    private bool yearScope; // false = aktueller Monat, true = aktuelles Jahr
+
+    // Anzeigewerte je nach Umschalter (Monat bzw. Jahr).
+    private decimal DispIncome => yearScope ? (year?.TotalIncome ?? 0m) : (month?.TotalIncome ?? 0m);
+    private decimal DispExpense => yearScope ? (year?.TotalExpense ?? 0m) : (month?.TotalExpense ?? 0m);
+    private decimal DispBalance => yearScope ? (year?.Balance ?? 0m) : (month?.Balance ?? 0m);
+
+    private IEnumerable<CategoryProjectionSummary> DispCategories =>
+        yearScope ? YearCategories() : (month?.Categories ?? Enumerable.Empty<CategoryProjectionSummary>());
 
     protected override async Task OnInitializedAsync()
     {
         var today = DateOnly.FromDateTime(DateTime.Today);
         monthLabel = today.ToString("MMMM yyyy", culture);
+        yearLabel = today.Year.ToString(culture);
+
         month = await Projections.GetMonthlyProjectionAsync(today.Year, today.Month, BudgetViewMode.Budget);
+        year = await Projections.GetYearlyProjectionAsync(today.Year, BudgetViewMode.Budget);
 
         var payments = new List<NextPayment>();
         for (var offset = 0; offset < 12; offset++)
@@ -112,6 +131,28 @@ else
         }
 
         upcoming = payments.OrderBy(p => p.When).ThenByDescending(p => p.Amount).Take(6).ToList();
+    }
+
+    private void SetScope(bool toYear) => yearScope = toYear;
+
+    // Jahres-Kategorien: über die 12 Monatsprojektionen je Kategorie aufsummiert.
+    private List<CategoryProjectionSummary> YearCategories()
+    {
+        if (year is null)
+        {
+            return new();
+        }
+
+        return year.Months
+            .SelectMany(m => m.Categories)
+            .GroupBy(c => new { c.CategoryId, c.CategoryName })
+            .Select(g => new CategoryProjectionSummary
+            {
+                CategoryId = g.Key.CategoryId,
+                CategoryName = g.Key.CategoryName,
+                TotalAmount = g.Sum(x => x.TotalAmount),
+            })
+            .ToList();
     }
 
     private string Money(decimal value) => value.ToString("C", culture);

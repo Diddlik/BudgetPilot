@@ -10,9 +10,12 @@
         <h1>Mehrjahresübersicht</h1>
     </div>
     <div class="header-actions">
-        <button class="button secondary" @onclick="EarlierRange">‹</button>
+        <button class="button secondary" @onclick="EarlierRange" title="Früherer Zeitraum">‹</button>
         <span class="date-chip">@FromYear–@ToYear</span>
-        <button class="button secondary" @onclick="LaterRange">›</button>
+        <button class="button secondary" @onclick="LaterRange" disabled="@(ToYear >= currentYear)" title="Späterer Zeitraum">›</button>
+        <button class="button secondary" @onclick="ShrinkSpan" disabled="@(span <= 4)" title="Weniger Jahre">–</button>
+        <span class="date-chip">@span Jahre</span>
+        <button class="button secondary" @onclick="ExpandSpan" title="Mehr Jahre">+</button>
     </div>
 </header>
 
@@ -84,12 +87,20 @@ else
 
 @code {
     private readonly CultureInfo culture = CultureInfo.GetCultureInfo("de-DE");
-    private int FromYear { get; set; } = DateTime.Today.Year - 2;
-    private int ToYear { get; set; } = DateTime.Today.Year + 5;
+    private readonly int currentYear = DateTime.Today.Year;
+    // Standard: die letzten 8 Jahre bis heute — keine Projektion in die Zukunft.
+    private int span = 8;          // Anzahl angezeigter Jahre (erweiterbar)
+    private int latestYear;        // rechtes (letztes) Jahr, nie > currentYear
+    private int FromYear => latestYear - span + 1;
+    private int ToYear => latestYear;
     private BudgetViewMode ViewMode { get; set; } = BudgetViewMode.Budget;
     private IReadOnlyList<YearSummaryDto>? years;
 
-    protected override Task OnInitializedAsync() => LoadAsync();
+    protected override Task OnInitializedAsync()
+    {
+        latestYear = currentYear;
+        return LoadAsync();
+    }
 
     private async Task LoadAsync()
     {
@@ -98,15 +109,25 @@ else
 
     private async Task EarlierRange()
     {
-        FromYear -= 4;
-        ToYear -= 4;
+        latestYear -= 4;                                    // weiter in die Vergangenheit
         await LoadAsync();
     }
 
     private async Task LaterRange()
     {
-        FromYear += 4;
-        ToYear += 4;
+        latestYear = Math.Min(currentYear, latestYear + 4); // nie in die Zukunft
+        await LoadAsync();
+    }
+
+    private async Task ExpandSpan()
+    {
+        span += 4;                                          // mehr Jahre auf einmal
+        await LoadAsync();
+    }
+
+    private async Task ShrinkSpan()
+    {
+        span = Math.Max(4, span - 4);
         await LoadAsync();
     }
 

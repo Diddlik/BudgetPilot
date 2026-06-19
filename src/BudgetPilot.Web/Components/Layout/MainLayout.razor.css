@@ -1,7 +1,7 @@
 .page {
     min-height: 100vh;
     display: grid;
-    grid-template-columns: 236px minmax(0, 1fr);
+    grid-template-columns: 248px minmax(0, 1fr);
     background: var(--page);
 }
 
@@ -27,9 +27,8 @@
     padding: 28px 26px 64px;
 }
 
-.bottom-nav {
-    display: none;
-}
+/* .bottom-nav (Mobile) wird global in app.css gestylt, damit die Regeln den
+   von <NavLink> gerenderten <a> sicher treffen. */
 
 #blazor-error-ui {
     background: #7f1d1d;
@@ -61,47 +60,5 @@
     .content {
         width: 100%;
         padding: 20px 16px 92px;
-    }
-
-    .bottom-nav {
-        display: grid;
-        grid-template-columns: repeat(5, 1fr);
-        gap: 4px;
-        position: fixed;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        z-index: 20;
-        padding: 6px 6px calc(6px + env(safe-area-inset-bottom));
-        background: #FBF8F2;
-        border-top: 1px solid var(--line);
-        box-shadow: 0 -10px 30px rgba(60, 48, 28, 0.10);
-        backdrop-filter: blur(16px);
-    }
-
-    .bottom-nav a {
-        min-height: 50px;
-        color: var(--soft);
-        display: grid;
-        place-items: center;
-        gap: 3px;
-        text-decoration: none;
-        border-radius: 10px;
-        font-weight: 600;
-    }
-
-    .bottom-nav a.active {
-        color: var(--accent);
-        background: var(--accent-soft);
-    }
-
-    .bottom-nav span {
-        font-size: 1.15rem;
-        line-height: 1;
-    }
-
-    .bottom-nav small {
-        font-size: 0.66rem;
-        font-weight: 700;
     }
 }

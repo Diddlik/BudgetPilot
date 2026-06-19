@@ -387,7 +387,30 @@ h2 {
 }
 
 .payment-row {
-    grid-template-columns: auto 1fr auto;
+    grid-template-columns: minmax(0, 1fr) auto;
+}
+
+/* Name oben, Kategorie · Monat klein darunter; Betrag rechtsbündig, kein Umbruch */
+.payment-row > div:first-child {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+}
+
+.payment-row > div:first-child strong {
+    font-size: 0.9rem;
+    font-weight: 700;
+}
+
+.payment-row > div:first-child span {
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+.payment-row .numeric {
+    white-space: nowrap;
+    font-weight: 800;
+    color: var(--ink);
 }
 
 .payment-row:hover,
@@ -401,14 +424,20 @@ h2 {
     color: var(--muted);
 }
 
+/* Flex-Zeile: Name flexibel, Pille direkt vor dem Betrag, Betrag mit fester
+   Mindestbreite rechtsbündig — so fluchten Pillen UND Beträge spaltensauber,
+   egal ob eine „anteilig/fällig"-Pille vorhanden ist. */
 .budget-line {
-    grid-template-columns: minmax(0, 1fr) auto auto;
+    display: flex;
+    align-items: center;
     border-bottom: 1px solid #F4EDDF;
     border-radius: 0;
 }
 
 /* Name oben, Frequenz klein darunter (wie in der Vorlage) */
 .budget-line > div:first-child {
+    flex: 1;
+    min-width: 0;
     display: grid;
     gap: 2px;
 }
@@ -421,6 +450,16 @@ h2 {
 .budget-line > div:first-child span {
     font-size: 0.78rem;
     font-weight: 600;
+}
+
+.budget-line .pill {
+    flex: none;
+}
+
+.budget-line .numeric {
+    flex: none;
+    min-width: 92px;
+    text-align: right;
 }
 
 .muted-line,
@@ -784,6 +823,116 @@ dd {
     background: var(--expense-soft);
     font-size: 0.84rem;
     font-weight: 600;
+}
+
+/* Sidebar-Navigation — global gehalten, damit die Regeln den von <NavLink>
+   gerenderten <a> sicher treffen (Scoped-CSS-Attribut landet dort nicht) und
+   Bootstraps .nav-link { display:block } schlagen (.sidebar erhöht Spezifität). */
+.sidebar .nav-link {
+    min-height: 42px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 12px;
+    border-radius: 12px;
+    color: var(--muted);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.875rem;
+    white-space: nowrap;
+    transition: background .15s, color .15s;
+}
+
+.sidebar .nav-ic {
+    width: 28px;
+    height: 28px;
+    flex: none;
+    display: grid;
+    place-items: center;
+    border-radius: 8px;
+    background: var(--ic-bg, #EFE7D8);
+    color: var(--ic, var(--soft));
+    transition: transform .15s;
+}
+
+.sidebar .nav-ic svg {
+    width: 16px;
+    height: 16px;
+}
+
+.sidebar .nav-link:hover {
+    background: #EFE7D8;
+    color: var(--ink);
+}
+
+.sidebar .nav-link:hover .nav-ic {
+    transform: scale(1.06);
+}
+
+.sidebar .nav-link.active {
+    background: var(--accent-soft);
+    color: var(--accent);
+}
+
+/* Mobile Bottom-Navigation — global, damit die Regeln den von <NavLink>
+   gerenderten <a> sicher treffen; farbige Icons je Eintrag (--ic). */
+.bottom-nav {
+    display: none;
+}
+
+@media (max-width: 760px) {
+    .bottom-nav {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 4px;
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 20;
+        padding: 6px 6px calc(6px + env(safe-area-inset-bottom));
+        background: #FBF8F2;
+        border-top: 1px solid var(--line);
+        box-shadow: 0 -10px 30px rgba(60, 48, 28, 0.10);
+    }
+
+    .bottom-nav a {
+        min-height: 52px;
+        display: grid;
+        place-items: center;
+        gap: 4px;
+        text-decoration: none;
+        border-radius: 12px;
+        color: var(--muted);
+        font-weight: 700;
+    }
+
+    .bottom-ic {
+        width: 26px;
+        height: 24px;
+        display: grid;
+        place-items: center;
+        color: var(--ic, var(--soft));
+    }
+
+    .bottom-ic svg {
+        width: 21px;
+        height: 21px;
+    }
+
+    .bottom-nav small {
+        font-size: 0.66rem;
+        font-weight: 700;
+        line-height: 1;
+    }
+
+    .bottom-nav a.active {
+        background: var(--accent-soft);
+    }
+
+    .bottom-nav a.active small {
+        color: var(--accent);
+    }
 }
 
 /* Auth (login / logout) */

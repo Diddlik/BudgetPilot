@@ -9,33 +9,45 @@
 </div>
 
 <nav class="nav-list" aria-label="Hauptnavigation">
-    <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-        <span aria-hidden="true">⌂</span>
+    <NavLink class="nav-link" href="" Match="NavLinkMatch.All" style="--ic:#C2410C; --ic-bg:#FBEADD;">
+        <span class="nav-ic" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 9-8 9 8" /><path d="M5 10v10h14V10" /><path d="M9 20v-6h6v6" /></svg>
+        </span>
         Dashboard
     </NavLink>
 
-    <NavLink class="nav-link" href="monatsuebersicht">
-        <span aria-hidden="true">◷</span>
+    <NavLink class="nav-link" href="monatsuebersicht" style="--ic:#1E7A4D; --ic-bg:#E4F0E7;">
+        <span class="nav-ic" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="2" /><path d="M3 9.5h18" /><path d="M8 2.5v4" /><path d="M16 2.5v4" /></svg>
+        </span>
         Monatsübersicht
     </NavLink>
 
-    <NavLink class="nav-link" href="jahresuebersicht">
-        <span aria-hidden="true">▥</span>
+    <NavLink class="nav-link" href="jahresuebersicht" style="--ic:#2563EB; --ic-bg:#E5ECFB;">
+        <span class="nav-ic" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20h18" /><path d="M6 20V11" /><path d="M12 20V4" /><path d="M18 20v-6" /></svg>
+        </span>
         Jahresübersicht
     </NavLink>
 
-    <NavLink class="nav-link" href="mehrjahresuebersicht">
-        <span aria-hidden="true">∿</span>
+    <NavLink class="nav-link" href="mehrjahresuebersicht" style="--ic:#7C3AED; --ic-bg:#EFE7FB;">
+        <span class="nav-ic" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 16 5-5 4 4 6-7" /><path d="M17 7h4v4" /></svg>
+        </span>
         Mehrjahre
     </NavLink>
 
-    <NavLink class="nav-link" href="budgetpositionen">
-        <span aria-hidden="true">≡</span>
+    <NavLink class="nav-link" href="budgetpositionen" style="--ic:#0D9488; --ic-bg:#D9F2EE;">
+        <span class="nav-ic" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13" /><path d="M8 12h13" /><path d="M8 18h13" /><path d="M3.5 6h.01" /><path d="M3.5 12h.01" /><path d="M3.5 18h.01" /></svg>
+        </span>
         Budgetpositionen
     </NavLink>
 
-    <NavLink class="nav-link" href="kategorien">
-        <span aria-hidden="true">□</span>
+    <NavLink class="nav-link" href="kategorien" style="--ic:#DB2777; --ic-bg:#FBE4F0;">
+        <span class="nav-ic" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5" /><rect x="13.5" y="3.5" width="7" height="7" rx="1.5" /><rect x="3.5" y="13.5" width="7" height="7" rx="1.5" /><rect x="13.5" y="13.5" width="7" height="7" rx="1.5" /></svg>
+        </span>
         Kategorien
     </NavLink>
 </nav>
@@ -46,8 +58,10 @@
             <span>Angemeldet als</span>
             <strong>@context.User.Identity?.Name</strong>
         </div>
-        <a class="nav-link logout-link" href="account/logout">
-            <span aria-hidden="true">⎋</span>
+        <a class="nav-link logout-link" href="account/logout" style="--ic:#B23A22; --ic-bg:#F8E6E0;">
+            <span class="nav-ic" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><path d="m16 17 5-5-5-5" /><path d="M21 12H9" /></svg>
+            </span>
             Abmelden
         </a>
     </div>

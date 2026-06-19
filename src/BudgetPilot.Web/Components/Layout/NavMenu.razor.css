@@ -46,39 +46,9 @@
     gap: 3px;
 }
 
-.nav-link {
-    min-height: 42px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 0 14px;
-    border-radius: 12px;
-    color: var(--muted);
-    text-decoration: none;
-    font-weight: 600;
-    font-size: 0.9rem;
-    transition: background .15s, color .15s;
-}
-
-.nav-link span {
-    width: 18px;
-    text-align: center;
-    color: var(--soft);
-}
-
-.nav-link:hover {
-    background: #EFE7D8;
-    color: var(--ink);
-}
-
-.nav-link.active {
-    background: var(--accent-soft);
-    color: var(--accent);
-}
-
-.nav-link.active span {
-    color: var(--accent);
-}
+/* Layout/Optik der Nav-Links + Icon-Kacheln stehen global in app.css
+   (.sidebar .nav-link / .sidebar .nav-ic), da das Scoped-Attribut den von
+   <NavLink> gerenderten <a> nicht erreicht. */
 
 .sidebar-user {
     margin-top: auto;
