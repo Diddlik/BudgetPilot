@@ -59,7 +59,7 @@ else
         <header class="panel-header">
             <div>
                 <h2>Mehrjahres-Übersicht</h2>
-                <p class="hint compact">Planung von @Year bis @MultiYearTo in @UiText.ViewModeLabel(ViewMode).</p>
+                <p class="hint compact">Übersicht von @MultiYearFrom bis @Year in @UiText.ViewModeLabel(ViewMode).</p>
             </div>
             <span>@(multiYear?.Count ?? 0) Jahre</span>
         </header>
@@ -132,14 +132,14 @@ else
     private BudgetViewMode ViewMode { get; set; } = BudgetViewMode.Budget;
     private YearlyBudgetProjectionDto? yearly;
     private IReadOnlyList<YearSummaryDto>? multiYear;
-    private int MultiYearTo => Year + 5;
+    private int MultiYearFrom => Year - 4;
 
     protected override Task OnInitializedAsync() => LoadAsync();
 
     private async Task LoadAsync()
     {
         yearly = await Projections.GetYearlyProjectionAsync(Year, ViewMode);
-        multiYear = await Projections.GetMultiYearSummaryAsync(Year, MultiYearTo, ViewMode);
+        multiYear = await Projections.GetMultiYearSummaryAsync(MultiYearFrom, Year, ViewMode);
     }
 
     private async Task PreviousYear()

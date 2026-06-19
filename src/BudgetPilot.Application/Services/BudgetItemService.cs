@@ -141,19 +141,32 @@ public sealed class BudgetItemService : IBudgetItemService
 
         var previousAmount = DtoMapper.CurrentVersion(item)?.Amount;
 
-        // §4.3: bisher offene Version beenden (ValidTo = D - 1 Tag), neue offene Version anhängen.
-        var previousDay = request.ValidFrom.AddDays(-1);
-        var open = item.Versions.Where(v => v.ValidTo is null).ToList();
-        foreach (var prev in open)
+        // §4.3: Neue Version einfügen.
+        // Vorwärts (Standard): bisher offene Version schließen (ValidTo = D-1), neue bleibt offen.
+        // Rückwärts (retroaktiv): neue Version wird mit ValidTo = offeneVersion.ValidFrom-1 geschlossen,
+        // die bestehende offene Version bleibt unverändert.
+        var openVersions = item.Versions.Where(v => v.ValidTo is null).ToList();
+        DateOnly? newValidTo = null;
+
+        foreach (var prev in openVersions)
         {
-            if (prev.ValidFrom > previousDay)
-                throw new DomainException(
-                    "Die neue Version beginnt vor oder am Beginn der bisher offenen Version – kein lückenloser, überschneidungsfreier Anschluss möglich.");
-            prev.ValidTo = previousDay;
+            if (request.ValidFrom == prev.ValidFrom)
+                throw new DomainException("Es existiert bereits eine Version mit diesem Startdatum.");
+
+            if (request.ValidFrom < prev.ValidFrom)
+            {
+                // Rückwirkend: neue Version läuft bis zum Tag vor der bestehenden offenen Version.
+                newValidTo = prev.ValidFrom.AddDays(-1);
+            }
+            else
+            {
+                // Standard vorwärts: bestehende offene Version schließen.
+                prev.ValidTo = request.ValidFrom.AddDays(-1);
+            }
         }
 
         // Überschneidungsfreiheit gegen ALLE bestehenden Versionen prüfen (§4.1.1).
-        BudgetValidation.EnsureNoOverlap(item.Versions, request.ValidFrom, validTo: null);
+        BudgetValidation.EnsureNoOverlap(item.Versions, request.ValidFrom, newValidTo);
 
         var now = DateTime.UtcNow;
         var version = new BudgetItemVersion
@@ -163,7 +176,7 @@ public sealed class BudgetItemService : IBudgetItemService
             Amount = request.Amount,
             Frequency = request.Frequency,
             ValidFrom = request.ValidFrom,
-            ValidTo = null,
+            ValidTo = newValidTo,
             PaymentDay = request.PaymentDay,
             PaymentMonth = request.PaymentMonth,
             Note = request.Note,
@@ -182,7 +195,7 @@ public sealed class BudgetItemService : IBudgetItemService
             $"{change} · {Freq(request.Frequency)}, neue Version ab {request.ValidFrom:dd.MM.yyyy}", ct)
             .ConfigureAwait(false);
 
-        return DtoMapper.ToDto(version, isCurrent: true);
+        return DtoMapper.ToDto(version, isCurrent: newValidTo is null);
     }
 
     public async Task UpdateCurrentVersionAsync(

@@ -194,8 +194,14 @@
 
     private bool TryParseAmount(out decimal amount)
     {
-        var normalized = AmountText.Trim().Replace('.', ',');
-        return decimal.TryParse(normalized, NumberStyles.Number, culture, out amount);
+        var text = AmountText.Trim();
+        // de-DE handles "1.200,00" (thousands dot + decimal comma) and "1200,00"
+        if (decimal.TryParse(text, NumberStyles.Number, culture, out amount))
+            return true;
+        // Fallback: user typed English decimal dot without any comma ("1200.50")
+        if (!text.Contains(','))
+            return decimal.TryParse(text.Replace('.', ','), NumberStyles.Number, culture, out amount);
+        return false;
     }
 
     private void OnValidFromChanged(ChangeEventArgs args)

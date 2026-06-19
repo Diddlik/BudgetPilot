@@ -887,21 +887,26 @@ dd {
 
 @media (max-width: 760px) {
     .bottom-nav {
-        display: grid;
-        grid-template-columns: repeat(5, 1fr);
-        gap: 4px;
+        display: flex;
+        overflow-x: auto;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
         position: fixed;
         left: 0;
         right: 0;
         bottom: 0;
         z-index: 20;
-        padding: 6px 6px calc(6px + env(safe-area-inset-bottom));
+        padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
         background: #FBF8F2;
         border-top: 1px solid var(--line);
         box-shadow: 0 -10px 30px rgba(60, 48, 28, 0.10);
     }
 
+    .bottom-nav::-webkit-scrollbar { display: none; }
+
     .bottom-nav a {
+        flex: 0 0 auto;
+        min-width: 58px;
         min-height: 52px;
         display: grid;
         place-items: center;
@@ -910,6 +915,7 @@ dd {
         border-radius: 12px;
         color: var(--muted);
         font-weight: 700;
+        padding: 0 6px;
     }
 
     .bottom-ic {
