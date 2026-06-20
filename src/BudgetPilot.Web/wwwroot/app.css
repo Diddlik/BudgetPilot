@@ -879,6 +879,27 @@ dd {
     color: var(--accent);
 }
 
+/* Laufende Version (Sidebar-Fuß / mobiles Mehr-Menü). */
+.version-tag {
+    display: block;
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: var(--muted);
+    letter-spacing: 0.01em;
+}
+
+.sidebar-user .version-tag {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--line);
+}
+
+.more-version {
+    margin-top: 4px;
+    padding: 8px 12px 2px;
+    text-align: center;
+}
+
 /* Mobile Bottom-Navigation — global, damit die Regeln den von <NavLink>
    gerenderten <a> sicher treffen; farbige Icons je Eintrag (--ic). */
 .bottom-nav {

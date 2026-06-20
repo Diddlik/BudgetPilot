@@ -7,7 +7,13 @@ COPY global.json Directory.Build.props Directory.Packages.props BudgetPilot.sln 
 COPY src/ ./src/
 
 RUN dotnet restore src/BudgetPilot.Web/BudgetPilot.Web.csproj
-RUN dotnet publish src/BudgetPilot.Web/BudgetPilot.Web.csproj -c Release -o /app/publish --no-restore /p:UseAppHost=false
+
+# Versions-/Commit-Infos werden vom CI als Build-Args übergeben (im Container gibt
+# es kein .git). Ohne Args bleibt es "unknown".
+ARG COMMIT_HASH=unknown
+ARG COMMIT_DATE=unknown
+RUN dotnet publish src/BudgetPilot.Web/BudgetPilot.Web.csproj -c Release -o /app/publish --no-restore \
+    /p:UseAppHost=false /p:CommitHash="$COMMIT_HASH" /p:CommitDate="$COMMIT_DATE"
 
 # ── Runtime stage ────────────────────────────────────────────────────────────
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime

@@ -9,6 +9,42 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <Version>1.0.0</Version>
   </PropertyGroup>
+
+  <!--
+    Bettet Commit-Hash und Commit-Datum als Assembly-Metadaten ein, damit im UI
+    sichtbar ist, welche Version läuft. CI/Docker übergeben die Werte via
+    -p:CommitHash=.. -p:CommitDate=.. (im Container gibt es kein .git). Lokal
+    werden sie best-effort aus git abgeleitet; schlägt das fehl, bleibt "unknown".
+  -->
+  <Target Name="AddBuildMetadata" BeforeTargets="GetAssemblyAttributes">
+    <Exec Condition="'$(CommitHash)' == ''"
+          Command="git rev-parse --short HEAD"
+          ConsoleToMSBuild="true" ContinueOnError="true" StandardOutputImportance="low">
+      <Output TaskParameter="ConsoleOutput" PropertyName="CommitHash" />
+    </Exec>
+    <!-- %25%25 wird zu %% : der Windows-Exec-Batch wandelt %% in ein einzelnes % um, sodass
+         git das ISO-Commit-Datum liefert. Schlägt es fehl, greift "unknown". -->
+    <Exec Condition="'$(CommitDate)' == ''"
+          Command="git log -1 --format=%25%25cI"
+          ConsoleToMSBuild="true" ContinueOnError="true" StandardOutputImportance="low">
+      <Output TaskParameter="ConsoleOutput" PropertyName="CommitDate" />
+    </Exec>
+    <PropertyGroup>
+      <CommitHash Condition="'$(CommitHash)' == ''">unknown</CommitHash>
+      <CommitDate Condition="'$(CommitDate)' == ''">unknown</CommitDate>
+    </PropertyGroup>
+    <ItemGroup>
+      <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+        <_Parameter1>CommitHash</_Parameter1>
+        <_Parameter2>$(CommitHash)</_Parameter2>
+      </AssemblyAttribute>
+      <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+        <_Parameter1>CommitDate</_Parameter1>
+        <_Parameter2>$(CommitDate)</_Parameter2>
+      </AssemblyAttribute>
+    </ItemGroup>
+  </Target>
 
 </Project>

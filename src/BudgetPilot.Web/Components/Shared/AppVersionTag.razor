@@ -1,0 +1,7 @@
+@* Zeigt die laufende App-Version + Commit-Datum an (Sidebar-Fuß & mobiles Mehr-Menü). *@
+<span class="version-tag" title="@AppVersion.Tooltip(De)">@AppVersion.Display(De)</span>
+
+@code {
+    private static readonly System.Globalization.CultureInfo De =
+        System.Globalization.CultureInfo.GetCultureInfo("de-DE");
+}
