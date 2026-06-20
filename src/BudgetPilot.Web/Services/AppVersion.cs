@@ -16,23 +16,38 @@ public static class AppVersion
 
     static AppVersion()
     {
-        var asm = typeof(AppVersion).Assembly;
-        var meta = asm.GetCustomAttributes<AssemblyMetadataAttribute>()
-            .Where(a => a.Value is not null)
-            .ToDictionary(a => a.Key, a => a.Value!, StringComparer.OrdinalIgnoreCase);
-
-        var info = asm.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
-        var version = info?.Split('+')[0];
-        Version = string.IsNullOrWhiteSpace(version)
-            ? asm.GetName().Version?.ToString(3) ?? "0.0.0"
-            : version;
-
-        CommitHash = Clean(meta.GetValueOrDefault("CommitHash"));
-
-        if (Clean(meta.GetValueOrDefault("CommitDate")) is { } raw
-            && DateTimeOffset.TryParse(raw, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var dt))
+        // Rein kosmetisch: darf das Rendern (läuft beim Prerender JEDER Seite) niemals
+        // zum Absturz bringen – daher komplett fehlertolerant mit Fallbacks.
+        Version = "0.0.0";
+        try
         {
-            CommitDate = dt;
+            var asm = typeof(AppVersion).Assembly;
+
+            // Kein ToDictionary: doppelte Metadaten-Schlüssel würden sonst werfen.
+            var meta = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var a in asm.GetCustomAttributes<AssemblyMetadataAttribute>())
+            {
+                if (a.Value is not null)
+                    meta[a.Key] = a.Value;
+            }
+
+            var info = asm.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+            var version = info?.Split('+')[0];
+            Version = string.IsNullOrWhiteSpace(version)
+                ? asm.GetName().Version?.ToString(3) ?? "0.0.0"
+                : version;
+
+            CommitHash = Clean(meta.GetValueOrDefault("CommitHash"));
+
+            if (Clean(meta.GetValueOrDefault("CommitDate")) is { } raw
+                && DateTimeOffset.TryParse(raw, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var dt))
+            {
+                CommitDate = dt;
+            }
+        }
+        catch
+        {
+            // Defaults beibehalten – die App startet/rendert auf jeden Fall.
         }
     }
 
