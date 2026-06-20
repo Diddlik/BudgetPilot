@@ -9,7 +9,16 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <Version>1.0.0</Version>
+    <!--
+      VERSIONIERUNG — die einzige Stellschraube:
+      VersionPrefix = MAJOR.MINOR. Den Patch hängt die CI automatisch aus der
+      Git-Commit-Anzahl an (-p:Version=MAJOR.MINOR.<height>), sodass die Version
+      bei jedem Commit wandert (z. B. 1.0.42). HOCHSTUFEN = diese Zeile ändern:
+      auf 1.1 für ein Feature-Release, auf 2.0 für einen Breaking-Change.
+      Lokale Builds (ohne -p:Version) zeigen nur den Prefix; der echte Wert wird
+      im CI-Build gesetzt und ist im UI (Versions-Tag) sichtbar.
+    -->
+    <VersionPrefix>1.0</VersionPrefix>
   </PropertyGroup>
 
   <!--

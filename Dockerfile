@@ -9,11 +9,13 @@ COPY src/ ./src/
 RUN dotnet restore src/BudgetPilot.Web/BudgetPilot.Web.csproj
 
 # Versions-/Commit-Infos werden vom CI als Build-Args übergeben (im Container gibt
-# es kein .git). Ohne Args bleibt es "unknown".
+# es kein .git). Ohne Args bleibt es "unknown" bzw. der VersionPrefix aus der .csproj.
 ARG COMMIT_HASH=unknown
 ARG COMMIT_DATE=unknown
+ARG APP_VERSION=
 RUN dotnet publish src/BudgetPilot.Web/BudgetPilot.Web.csproj -c Release -o /app/publish --no-restore \
-    /p:UseAppHost=false /p:CommitHash="$COMMIT_HASH" /p:CommitDate="$COMMIT_DATE"
+    /p:UseAppHost=false /p:CommitHash="$COMMIT_HASH" /p:CommitDate="$COMMIT_DATE" \
+    $([ -n "$APP_VERSION" ] && echo "/p:Version=$APP_VERSION")
 
 # ── Runtime stage ────────────────────────────────────────────────────────────
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime

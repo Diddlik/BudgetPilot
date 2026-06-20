@@ -23,12 +23,20 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # Volle Historie, damit die Commit-Anzahl (Patch-Version) stimmt.
+          fetch-depth: 0
 
       - name: Commit metadata
         id: commit
         run: |
           echo "hash=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
           echo "date=$(git log -1 --format=%cI)" >> "$GITHUB_OUTPUT"
+          # Version = VersionPrefix (MAJOR.MINOR aus der .csproj) + Commit-Anzahl als Patch.
+          PREFIX=$(grep -oP '(?<=<VersionPrefix>)[^<]+' src/BudgetPilot.Web/BudgetPilot.Web.csproj | head -1)
+          PREFIX=${PREFIX:-1.0}
+          HEIGHT=$(git rev-list --count HEAD)
+          echo "version=${PREFIX}.${HEIGHT}" >> "$GITHUB_OUTPUT"
 
       - name: Set up Buildx
         uses: docker/setup-buildx-action@v3
@@ -59,5 +67,6 @@ jobs:
           build-args: |
             COMMIT_HASH=${{ steps.commit.outputs.hash }}
             COMMIT_DATE=${{ steps.commit.outputs.date }}
+            APP_VERSION=${{ steps.commit.outputs.version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
