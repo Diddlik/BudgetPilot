@@ -17,6 +17,14 @@ public interface IBudgetItemRepository
 
     Task AddAsync(BudgetItem item, CancellationToken ct = default);
 
+    /// <summary>
+    /// Markiert eine NEUE Version explizit als hinzuzufügen. Nötig, weil EF Guid-PKs
+    /// per Konvention als wertgeneriert behandelt: eine über die Navigations-Collection
+    /// angehängte Version mit vorab gesetzter Guid würde sonst als UPDATE statt INSERT
+    /// interpretiert (0 Zeilen betroffen).
+    /// </summary>
+    void AddVersion(BudgetItemVersion version);
+
     void Update(BudgetItem item);
 
     void Remove(BudgetItem item);

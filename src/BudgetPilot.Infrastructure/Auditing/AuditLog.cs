@@ -33,25 +33,32 @@ public sealed class AuditLog : IAuditLog
         string? details = null,
         CancellationToken ct = default)
     {
+        var entry = new AuditEntry
+        {
+            Id = Guid.NewGuid(),
+            TimestampUtc = DateTime.UtcNow,
+            UserName = "System",
+            Action = action,
+            EntityType = entityType,
+            EntityId = entityId,
+            EntityName = entityName,
+            Details = details
+        };
+
         try
         {
             var actor = await _currentUser.GetAsync(ct).ConfigureAwait(false);
-            _db.Set<AuditEntry>().Add(new AuditEntry
-            {
-                Id = Guid.NewGuid(),
-                TimestampUtc = DateTime.UtcNow,
-                UserName = actor.DisplayName,
-                UserId = actor.UserId,
-                Action = action,
-                EntityType = entityType,
-                EntityId = entityId,
-                EntityName = entityName,
-                Details = details
-            });
+            entry.UserName = actor.DisplayName;
+            entry.UserId = actor.UserId;
+            _db.Set<AuditEntry>().Add(entry);
             await _db.SaveChangesAsync(ct).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
+            // Best effort: schlägt das Protokollieren fehl, darf der getrackte (nicht
+            // gespeicherte) Eintrag nicht hängen bleiben – sonst versucht ihn das nächste
+            // fachliche SaveChanges erneut. Daher abkoppeln.
+            _db.Entry(entry).State = EntityState.Detached;
             _logger.LogWarning(ex,
                 "Audit-Eintrag konnte nicht geschrieben werden ({Action} {EntityType} {EntityId}).",
                 action, entityType, entityId);

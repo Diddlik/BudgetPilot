@@ -879,12 +879,13 @@ dd {
     color: var(--accent);
 }
 
-/* Laufende Version (Sidebar-Fuß / mobiles Mehr-Menü). */
+/* Laufende Version (Sidebar-Fuß / mobiles Mehr-Menü) — dezent und klein. */
 .version-tag {
     display: block;
-    font-size: 0.68rem;
-    font-weight: 600;
+    font-size: 0.58rem;
+    font-weight: 500;
     color: var(--muted);
+    opacity: 0.6;
     letter-spacing: 0.01em;
 }
 

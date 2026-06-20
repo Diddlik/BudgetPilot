@@ -69,6 +69,11 @@ public sealed class FakeBudgetItemRepository : IBudgetItemRepository
         return Task.CompletedTask;
     }
 
+    public void AddVersion(BudgetItemVersion version)
+    {
+        // Im Fake hängt der Service die Version bereits an item.Versions an; nichts weiter zu tun.
+    }
+
     public void Update(BudgetItem item)
     {
         // Entities werden direkt referenziert; nichts weiter zu tun.

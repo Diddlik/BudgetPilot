@@ -2,8 +2,9 @@
 @inject IBudgetItemService Items
 @inject ICategoryService Categories
 
-<div class="modal-backdrop" @onclick="Cancel">
-    <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="budget-form-title" @onclick:stopPropagation="true">
+<div class="modal-backdrop" @onmousedown="OnBackdropPointerDown" @onclick="OnBackdropClick">
+    <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="budget-form-title"
+             @onmousedown="OnSheetPointerDown" @onmousedown:stopPropagation="true" @onclick:stopPropagation="true">
         <header class="sheet-header">
             <div>
                 <p class="eyebrow">@ModeTitle</p>
@@ -207,6 +208,25 @@
     private void OnValidFromChanged(ChangeEventArgs args)
     {
         ValidFromText = args.Value?.ToString() ?? string.Empty;
+    }
+
+    // Schließen nur, wenn der Klick wirklich auf dem Hintergrund begann. Verhindert,
+    // dass das Markieren von Text im Betragsfeld (Maus-Loslassen außerhalb des Fensters)
+    // das Popup ungewollt schließt.
+    private bool pointerDownOnBackdrop;
+
+    private void OnBackdropPointerDown() => pointerDownOnBackdrop = true;
+
+    private void OnSheetPointerDown() => pointerDownOnBackdrop = false;
+
+    private async Task OnBackdropClick()
+    {
+        if (!pointerDownOnBackdrop)
+        {
+            return;
+        }
+        pointerDownOnBackdrop = false;
+        await Cancel();
     }
 
     private Task Cancel() => OnCancel.InvokeAsync();

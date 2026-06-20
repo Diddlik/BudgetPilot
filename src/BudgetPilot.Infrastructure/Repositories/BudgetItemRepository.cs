@@ -52,6 +52,13 @@ public class BudgetItemRepository : IBudgetItemRepository
         await _db.BudgetItems.AddAsync(item, ct);
     }
 
+    public void AddVersion(BudgetItemVersion version)
+    {
+        // Zustand explizit auf Added setzen, damit EF INSERT (statt UPDATE) erzeugt –
+        // unabhängig davon, dass die Guid-PK bereits einen Wert hat.
+        _db.Entry(version).State = EntityState.Added;
+    }
+
     public void Update(BudgetItem item)
     {
         _db.BudgetItems.Update(item);
