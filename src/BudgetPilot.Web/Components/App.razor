@@ -24,6 +24,19 @@
 <body>
     <Routes />
     <script src="_framework/blazor.web.js"></script>
+    <script>
+        // Mobiles "Mehr"-Menü (natives <details>): bei Klick außerhalb oder auf
+        // einen Eintrag schließen. Document-Listener überlebt Enhanced Navigation.
+        document.addEventListener('click', function (e) {
+            var open = document.querySelector('.more-menu[open]');
+            if (!open) return;
+            if (e.target.closest('.more-backdrop') ||
+                e.target.closest('.more-item') ||
+                !e.target.closest('.more-menu')) {
+                open.removeAttribute('open');
+            }
+        });
+    </script>
 </body>
 
 </html>
