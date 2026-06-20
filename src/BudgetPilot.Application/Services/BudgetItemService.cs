@@ -185,7 +185,10 @@ public sealed class BudgetItemService : IBudgetItemService
         item.Versions.Add(version);
         item.UpdatedAt = now;
 
-        _items.Update(item);
+        // Kein explizites _items.Update(item) hier: das Item wurde ohne AsNoTracking geladen,
+        // EF Core trackt alle Änderungen (ValidTo auf Vorgänger-Version, neue Version als Added,
+        // UpdatedAt auf Item) automatisch. Update() würde die neue Version fälschlich als Modified
+        // markieren und ein UPDATE auf eine noch nicht existierende Zeile erzeugen.
         await _uow.SaveChangesAsync(ct).ConfigureAwait(false);
 
         var change = previousAmount is { } prevAmt
