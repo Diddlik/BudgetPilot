@@ -53,7 +53,10 @@ else
                     <div class="timeline-card">
                         <header>
                             <strong class="numeric">@Money(version.Amount)</strong>
-                            <span class="pill @(version.IsCurrent ? "success" : "neutral")">@(version.IsCurrent ? "Aktuell" : "Historisch")</span>
+                            <div class="timeline-actions">
+                                <span class="pill @(version.IsCurrent ? "success" : "neutral")">@(version.IsCurrent ? "Aktuell" : "Historisch")</span>
+                                <button class="button secondary tiny" @onclick="() => OpenVersionEdit(version.Id)">Korrigieren</button>
+                            </div>
                         </header>
                         <dl>
                             <div><dt>Frequenz</dt><dd>@UiText.FrequencyLabel(version.Frequency)</dd></div>
@@ -111,7 +114,7 @@ else
 
 @if (formMode is not null && item is not null)
 {
-    <BudgetItemForm Mode="@formMode" Item="@item" OnSaved="SavedAsync" OnCancel="CloseForm" />
+    <BudgetItemForm Mode="@formMode" Item="@item" VersionId="@editVersionId" OnSaved="SavedAsync" OnCancel="CloseForm" />
 }
 
 @if (confirmDelete && item is not null)
@@ -134,6 +137,7 @@ else
     private readonly CultureInfo culture = CultureInfo.GetCultureInfo("de-DE");
     private BudgetItemDto? item;
     private string? formMode;
+    private Guid? editVersionId;
     private bool confirmDelete;
     private IReadOnlyList<PaymentScheduleEntry>? schedule;
     private int ScheduleFromYear { get; set; }
@@ -181,17 +185,26 @@ else
 
     private void OpenEdit()
     {
+        editVersionId = null;
         formMode = "Edit";
     }
 
     private void OpenVersion()
     {
+        editVersionId = null;
         formMode = "Version";
+    }
+
+    private void OpenVersionEdit(Guid versionId)
+    {
+        editVersionId = versionId;
+        formMode = "EditVersion";
     }
 
     private async Task SavedAsync(BudgetItemDto? saved)
     {
         formMode = null;
+        editVersionId = null;
         item = saved ?? await Items.GetByIdAsync(Id);
         await LoadScheduleAsync();
     }
@@ -199,6 +212,7 @@ else
     private Task CloseForm()
     {
         formMode = null;
+        editVersionId = null;
         return Task.CompletedTask;
     }
 

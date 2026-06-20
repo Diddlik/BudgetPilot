@@ -19,6 +19,13 @@ public interface IBudgetItemService
     /// <summary>In-place-Korrektur der aktuellen (jüngsten, offenen) Version.</summary>
     Task UpdateCurrentVersionAsync(Guid budgetItemId, UpdateVersionRequest request, CancellationToken ct = default);
 
+    /// <summary>
+    /// In-place-Korrektur einer BELIEBIGen (auch historischen) Version – z. B. um eine
+    /// falsch eingetragene Position rückwirkend zu berichtigen. Die Gültig-bis-Grenze der
+    /// Version bleibt erhalten; Überschneidungen mit anderen Versionen werden abgewiesen.
+    /// </summary>
+    Task UpdateVersionAsync(Guid budgetItemId, Guid versionId, UpdateVersionRequest request, CancellationToken ct = default);
+
     Task<IReadOnlyList<BudgetItemDto>> GetAllAsync(CancellationToken ct = default);
 
     Task<BudgetItemDto?> GetByIdAsync(Guid id, CancellationToken ct = default);

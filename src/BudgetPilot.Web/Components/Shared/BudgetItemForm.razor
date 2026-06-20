@@ -21,12 +21,12 @@
         <div class="form-grid">
             <label>
                 Name
-                <input class="field" @bind="Name" disabled="@IsVersionMode" />
+                <input class="field" @bind="Name" disabled="@MetadataLocked" />
             </label>
 
             <label>
                 Typ
-                <select class="field" @bind="Type" disabled="@IsVersionMode">
+                <select class="field" @bind="Type" disabled="@MetadataLocked">
                     <option value="@BudgetItemType.Expense">Ausgabe</option>
                     <option value="@BudgetItemType.Income">Einnahme</option>
                 </select>
@@ -34,7 +34,7 @@
 
             <label>
                 Kategorie
-                <select class="field" @bind="CategoryId" disabled="@IsVersionMode">
+                <select class="field" @bind="CategoryId" disabled="@MetadataLocked">
                     @foreach (var category in activeCategories)
                     {
                         <option value="@category.Id">@category.Name</option>
@@ -44,7 +44,7 @@
 
             <label>
                 Inhaber (optional)
-                <input class="field" list="owner-suggestions" placeholder="z. B. Mann, Frau, Gemeinsam" @bind="Owner" disabled="@IsVersionMode" />
+                <input class="field" list="owner-suggestions" placeholder="z. B. Mann, Frau, Gemeinsam" @bind="Owner" disabled="@MetadataLocked" />
                 <datalist id="owner-suggestions">
                     <option value="Mann" />
                     <option value="Frau" />
@@ -102,6 +102,7 @@
 @code {
     [Parameter] public string Mode { get; set; } = "Create";
     [Parameter] public BudgetItemDto? Item { get; set; }
+    [Parameter] public Guid? VersionId { get; set; }
     [Parameter] public Guid? PresetCategoryId { get; set; }
     [Parameter] public EventCallback<BudgetItemDto?> OnSaved { get; set; }
     [Parameter] public EventCallback OnCancel { get; set; }
@@ -119,17 +120,20 @@
     private string? Note { get; set; }
     private string? error;
 
-    private bool IsVersionMode => Mode == "Version";
+    // Stammdaten (Name/Typ/Kategorie/Inhaber) sind bei reinen Versions-Operationen gesperrt.
+    private bool MetadataLocked => Mode is "Version" or "EditVersion";
     private string ModeTitle => Mode switch
     {
         "Edit" => "Bearbeiten",
         "Version" => "Versionierung",
+        "EditVersion" => "Korrektur",
         _ => "Neue Position"
     };
     private string Heading => Mode switch
     {
         "Edit" => "Position bearbeiten",
         "Version" => "Betrag ab Datum ändern",
+        "EditVersion" => "Version korrigieren",
         _ => Type == BudgetItemType.Income ? "Neue Einnahme" : "Neue Ausgabe"
     };
     private bool CanSave => !string.IsNullOrWhiteSpace(Name) && TryParseAmount(out var amount) && amount >= 0 && DateOnly.TryParse(ValidFromText, out _) && CategoryId != Guid.Empty;
@@ -142,17 +146,24 @@
 
     private void PopulateFromParameters()
     {
-        var current = Item?.Versions.OrderByDescending(v => v.ValidFrom).FirstOrDefault(v => v.IsCurrent) ?? Item?.Versions.OrderByDescending(v => v.ValidFrom).FirstOrDefault();
+        // Bei "EditVersion" die konkret gewählte Version vorbelegen, sonst die aktuelle.
+        var source = (Mode == "EditVersion" && VersionId is { } vid
+            ? Item?.Versions.FirstOrDefault(v => v.Id == vid)
+            : null)
+            ?? Item?.Versions.OrderByDescending(v => v.ValidFrom).FirstOrDefault(v => v.IsCurrent)
+            ?? Item?.Versions.OrderByDescending(v => v.ValidFrom).FirstOrDefault();
+
         Name = Item?.Name ?? string.Empty;
         Owner = Item?.Owner;
         Type = Item?.Type ?? BudgetItemType.Expense;
         CategoryId = PresetCategoryId ?? Item?.CategoryId ?? activeCategories.FirstOrDefault()?.Id ?? Guid.Empty;
-        AmountText = (current?.Amount ?? 0m).ToString("N2", culture);
-        Frequency = current?.Frequency ?? BudgetFrequency.Monthly;
-        ValidFromText = (Mode == "Version" ? DateOnly.FromDateTime(DateTime.Today) : current?.ValidFrom ?? DateOnly.FromDateTime(DateTime.Today))
+        AmountText = (source?.Amount ?? 0m).ToString("N2", culture);
+        Frequency = source?.Frequency ?? BudgetFrequency.Monthly;
+        // Bei "Version" (neue Version) heute vorbelegen; sonst das Datum der Quelle.
+        ValidFromText = (Mode == "Version" ? DateOnly.FromDateTime(DateTime.Today) : source?.ValidFrom ?? DateOnly.FromDateTime(DateTime.Today))
             .ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
-        PaymentMonthText = current?.PaymentMonth?.ToString(CultureInfo.InvariantCulture) ?? string.Empty;
-        Note = current?.Note;
+        PaymentMonthText = source?.PaymentMonth?.ToString(CultureInfo.InvariantCulture) ?? string.Empty;
+        Note = source?.Note;
     }
 
     private async Task SaveAsync()
@@ -178,6 +189,11 @@
             else if (Mode == "Version" && Item is not null)
             {
                 await Items.AddVersionAsync(Item.Id, new CreateBudgetItemVersionRequest(amount, Frequency, validFrom, null, paymentMonth, Note));
+                saved = await Items.GetByIdAsync(Item.Id);
+            }
+            else if (Mode == "EditVersion" && Item is not null && VersionId is { } versionId)
+            {
+                await Items.UpdateVersionAsync(Item.Id, versionId, new UpdateVersionRequest(amount, Frequency, validFrom, null, paymentMonth, Note));
                 saved = await Items.GetByIdAsync(Item.Id);
             }
             else

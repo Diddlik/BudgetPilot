@@ -97,4 +97,51 @@ public sealed class AddVersionTests : IAsyncLifetime
         retro.ValidFrom.Should().Be(new DateOnly(2025, 1, 1));
         retro.ValidTo.Should().Be(new DateOnly(2025, 12, 31));
     }
+
+    [Fact]
+    public async Task AddVersion_retroactive_aligns_to_month_so_projection_stays_valid()
+    {
+        // Bestehende Version startet MITTEN im Monat (20.06.) – wie beim Anlegen "heute".
+        var id = await CreateItemAsync(new DateOnly(2026, 6, 20), amount: 11.99m);
+
+        // Rückwirkende Version davor.
+        await _items.AddVersionAsync(id, new CreateBudgetItemVersionRequest(
+            7.99m, BudgetFrequency.Monthly, new DateOnly(2024, 3, 15), null, null, null));
+
+        var item = (await _items.GetByIdAsync(id))!;
+        var retro = item.Versions.Single(v => !v.IsCurrent);
+        // Auf Monatsgrenze geschlossen (31.05.), NICHT 19.06. – sonst läge Juni in beiden Versionen.
+        retro.ValidTo.Should().Be(new DateOnly(2026, 5, 31));
+
+        // Die Projektion über Juni 2026 darf nicht wegen zweier gültiger Versionen werfen.
+        var projection = new BudgetProjectionService(new BudgetItemRepository(_db));
+        var act = async () => await projection.GetMonthlyProjectionAsync(2026, 6, BudgetViewMode.Cashflow);
+        await act.Should().NotThrowAsync();
+    }
+
+    [Fact]
+    public async Task UpdateVersion_corrects_a_historical_version_in_place()
+    {
+        var id = await CreateItemAsync(new DateOnly(2026, 1, 1), amount: 10m);
+        // Zweite (aktuelle) Version ab Juni -> die erste wird historisch (bis 31.05.2026).
+        await _items.AddVersionAsync(id, new CreateBudgetItemVersionRequest(
+            12m, BudgetFrequency.Monthly, new DateOnly(2026, 6, 1), null, null, null));
+
+        var historical = (await _items.GetByIdAsync(id))!.Versions.Single(v => !v.IsCurrent);
+
+        // Falsch eingetragenen historischen Betrag korrigieren (10 -> 9,50).
+        await _items.UpdateVersionAsync(id, historical.Id, new UpdateVersionRequest(
+            9.50m, BudgetFrequency.Monthly, historical.ValidFrom, null, null, null));
+
+        var reloaded = (await _items.GetByIdAsync(id))!;
+        reloaded.Versions.Should().HaveCount(2);
+
+        var fixedVersion = reloaded.Versions.Single(v => v.Id == historical.Id);
+        fixedVersion.Amount.Should().Be(9.50m);
+        fixedVersion.ValidFrom.Should().Be(new DateOnly(2026, 1, 1));
+        fixedVersion.ValidTo.Should().Be(new DateOnly(2026, 5, 31)); // Grenze unverändert
+
+        // Die aktuelle Version bleibt unberührt.
+        reloaded.Versions.Single(v => v.IsCurrent).Amount.Should().Be(12m);
+    }
 }

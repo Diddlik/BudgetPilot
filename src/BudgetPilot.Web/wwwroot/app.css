@@ -583,6 +583,26 @@ h2 {
     background: #FBF3E6;
 }
 
+/* Auf schmalen Screens kleiner setzen und Zahlen nicht umbrechen lassen
+   (sonst zerbrechen Jahreswerte wie "1.200,00 €" über zwei Zeilen). */
+@media (max-width: 760px) {
+    .data-table th,
+    .data-table td {
+        padding: 8px 5px;
+        font-size: 0.72rem;
+    }
+
+    .data-table th {
+        font-size: 0.58rem;
+        letter-spacing: 0.02em;
+    }
+
+    .data-table td.numeric,
+    .data-table th.numeric {
+        white-space: nowrap;
+    }
+}
+
 .filter-strip {
     display: grid;
     grid-template-columns: repeat(3, minmax(180px, 1fr));
@@ -762,8 +782,27 @@ dd {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
+    gap: 12px 10px;
+    flex-wrap: wrap;
     margin-bottom: 12px;
+}
+
+.timeline-card header > strong {
+    white-space: nowrap;
+}
+
+.timeline-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+/* Kompakte Schaltfläche (z. B. „Korrigieren" je Version). */
+.button.tiny {
+    padding: 5px 10px;
+    font-size: 0.74rem;
+    border-radius: 8px;
 }
 
 /* Modals & sheets */

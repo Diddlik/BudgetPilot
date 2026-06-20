@@ -33,6 +33,11 @@ public sealed class BudgetItemService : IBudgetItemService
 
     private static string Money(decimal value) => value.ToString("C", De);
 
+    private static bool SameMonth(DateOnly a, DateOnly b) => a.Year == b.Year && a.Month == b.Month;
+
+    /// <summary>Letzter Tag des Monats VOR dem Monat von <paramref name="d"/> (Monatsgrenze für Versionen).</summary>
+    private static DateOnly EndOfPreviousMonth(DateOnly d) => new DateOnly(d.Year, d.Month, 1).AddDays(-1);
+
     private static string Freq(BudgetFrequency frequency) => frequency switch
     {
         BudgetFrequency.Monthly => "monatlich",
@@ -141,27 +146,30 @@ public sealed class BudgetItemService : IBudgetItemService
 
         var previousAmount = DtoMapper.CurrentVersion(item)?.Amount;
 
-        // §4.3: Neue Version einfügen.
-        // Vorwärts (Standard): bisher offene Version schließen (ValidTo = D-1), neue bleibt offen.
-        // Rückwärts (retroaktiv): neue Version wird mit ValidTo = offeneVersion.ValidFrom-1 geschlossen,
-        // die bestehende offene Version bleibt unverändert.
+        // §4.3: Neue Version einfügen. Grenzen werden auf MONATSebene gezogen, weil die
+        // Projektion monatsweise rechnet: zwei Versionen dürfen nie denselben Monat berühren
+        // (§4.1.2). Der Monat des jeweiligen ValidFrom gehört vollständig der neuen Version;
+        // die Nachbar-Version endet am letzten Tag des Vormonats.
+        // Vorwärts: bestehende offene Version schließen. Rückwärts (retroaktiv): neue Version
+        // wird geschlossen, die bestehende offene bleibt unverändert.
         var openVersions = item.Versions.Where(v => v.ValidTo is null).ToList();
         DateOnly? newValidTo = null;
 
         foreach (var prev in openVersions)
         {
-            if (request.ValidFrom == prev.ValidFrom)
-                throw new DomainException("Es existiert bereits eine Version mit diesem Startdatum.");
+            if (SameMonth(request.ValidFrom, prev.ValidFrom))
+                throw new DomainException(
+                    "Im selben Monat existiert bereits eine Version. Wähle einen Monat davor oder danach.");
 
             if (request.ValidFrom < prev.ValidFrom)
             {
-                // Rückwirkend: neue Version läuft bis zum Tag vor der bestehenden offenen Version.
-                newValidTo = prev.ValidFrom.AddDays(-1);
+                // Rückwirkend: neue Version endet am letzten Tag vor dem Startmonat der bestehenden.
+                newValidTo = EndOfPreviousMonth(prev.ValidFrom);
             }
             else
             {
-                // Standard vorwärts: bestehende offene Version schließen.
-                prev.ValidTo = request.ValidFrom.AddDays(-1);
+                // Standard vorwärts: bestehende Version endet am letzten Tag vor dem neuen Startmonat.
+                prev.ValidTo = EndOfPreviousMonth(request.ValidFrom);
             }
         }
 
@@ -233,6 +241,43 @@ public sealed class BudgetItemService : IBudgetItemService
             : Money(request.Amount);
         await _audit.RecordAsync(AuditAction.Updated, "BudgetItem", item.Id, item.Name,
             $"{change} · {Freq(request.Frequency)} (laufende Version geändert)", ct)
+            .ConfigureAwait(false);
+    }
+
+    public async Task UpdateVersionAsync(
+        Guid budgetItemId, Guid versionId, UpdateVersionRequest request, CancellationToken ct = default)
+    {
+        var item = await GetItemOrThrowAsync(budgetItemId, ct).ConfigureAwait(false);
+
+        var version = item.Versions.FirstOrDefault(v => v.Id == versionId)
+            ?? throw new DomainException("Die zu ändernde Version wurde nicht gefunden.");
+
+        // Gültig-bis bleibt erhalten – nur die Inhalte (und ggf. Gültig-ab) werden korrigiert.
+        BudgetValidation.ValidateVersionValues(
+            request.Amount, request.ValidFrom, version.ValidTo, request.PaymentDay, request.PaymentMonth);
+
+        // Korrektur darf keine Überschneidung mit den anderen Versionen erzeugen.
+        BudgetValidation.EnsureNoOverlap(item.Versions, request.ValidFrom, version.ValidTo, ignoreVersionId: version.Id);
+
+        var beforeAmount = version.Amount;
+        var beforeFrom = version.ValidFrom;
+
+        version.Amount = request.Amount;
+        version.Frequency = request.Frequency;
+        version.ValidFrom = request.ValidFrom;
+        version.PaymentDay = request.PaymentDay;
+        version.PaymentMonth = request.PaymentMonth;
+        version.Note = request.Note;
+        item.UpdatedAt = DateTime.UtcNow;
+
+        _items.Update(item);
+        await _uow.SaveChangesAsync(ct).ConfigureAwait(false);
+
+        var change = beforeAmount != request.Amount
+            ? $"{Money(beforeAmount)} → {Money(request.Amount)}"
+            : Money(request.Amount);
+        await _audit.RecordAsync(AuditAction.Updated, "BudgetItem", item.Id, item.Name,
+            $"{change} · {Freq(request.Frequency)} (Version ab {beforeFrom:dd.MM.yyyy} korrigiert)", ct)
             .ConfigureAwait(false);
     }
 
