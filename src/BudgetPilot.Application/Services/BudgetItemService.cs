@@ -146,31 +146,33 @@ public sealed class BudgetItemService : IBudgetItemService
 
         var previousAmount = DtoMapper.CurrentVersion(item)?.Amount;
 
-        // §4.3: Neue Version einfügen. Grenzen werden auf MONATSebene gezogen, weil die
-        // Projektion monatsweise rechnet: zwei Versionen dürfen nie denselben Monat berühren
-        // (§4.1.2). Der Monat des jeweiligen ValidFrom gehört vollständig der neuen Version;
-        // die Nachbar-Version endet am letzten Tag des Vormonats.
-        // Vorwärts: bestehende offene Version schließen. Rückwärts (retroaktiv): neue Version
-        // wird geschlossen, die bestehende offene bleibt unverändert.
-        var openVersions = item.Versions.Where(v => v.ValidTo is null).ToList();
-        DateOnly? newValidTo = null;
+        // §4.3: Neue Version an beliebiger Stelle einfügen (vorne/mittig/hinten). Grenzen
+        // werden auf MONATSebene gezogen, weil die Projektion monatsweise rechnet: zwei
+        // Versionen dürfen nie denselben Monat berühren (§4.1.2). Der Startmonat der neuen
+        // Version gehört ihr ganz; Nachbarn enden am letzten Tag des jeweiligen Vormonats.
+        if (item.Versions.Any(v => SameMonth(v.ValidFrom, request.ValidFrom)))
+            throw new DomainException(
+                "Im selben Monat existiert bereits eine Version. Wähle einen Monat davor oder danach.");
 
-        foreach (var prev in openVersions)
+        // Nachfolger = nächste Version, die NACH der neuen beginnt (egal ob offen/geschlossen).
+        // Die neue Version endet am Monat davor; gibt es keinen Nachfolger, bleibt sie offen.
+        var successor = item.Versions
+            .Where(v => v.ValidFrom > request.ValidFrom)
+            .OrderBy(v => v.ValidFrom)
+            .FirstOrDefault();
+        DateOnly? newValidTo = successor is null ? null : EndOfPreviousMonth(successor.ValidFrom);
+
+        // Vorgänger = letzte Version, die VOR der neuen beginnt. Reicht sie in den Startmonat
+        // der neuen hinein (oder ist offen), wird sie am Vormonat geschlossen.
+        var predecessor = item.Versions
+            .Where(v => v.ValidFrom < request.ValidFrom)
+            .OrderByDescending(v => v.ValidFrom)
+            .FirstOrDefault();
+        if (predecessor is not null)
         {
-            if (SameMonth(request.ValidFrom, prev.ValidFrom))
-                throw new DomainException(
-                    "Im selben Monat existiert bereits eine Version. Wähle einen Monat davor oder danach.");
-
-            if (request.ValidFrom < prev.ValidFrom)
-            {
-                // Rückwirkend: neue Version endet am letzten Tag vor dem Startmonat der bestehenden.
-                newValidTo = EndOfPreviousMonth(prev.ValidFrom);
-            }
-            else
-            {
-                // Standard vorwärts: bestehende Version endet am letzten Tag vor dem neuen Startmonat.
-                prev.ValidTo = EndOfPreviousMonth(request.ValidFrom);
-            }
+            var boundary = EndOfPreviousMonth(request.ValidFrom);
+            if (predecessor.ValidTo is null || predecessor.ValidTo > boundary)
+                predecessor.ValidTo = boundary;
         }
 
         // Überschneidungsfreiheit gegen ALLE bestehenden Versionen prüfen (§4.1.1).

@@ -144,4 +144,31 @@ public sealed class AddVersionTests : IAsyncLifetime
         // Die aktuelle Version bleibt unberührt.
         reloaded.Versions.Single(v => v.IsCurrent).Amount.Should().Be(12m);
     }
+
+    [Fact]
+    public async Task AddVersion_before_two_existing_bounds_at_next_version_not_open_one()
+    {
+        // Reproduziert den Nutzerfall „Gehalt":
+        //  V1: 01.01.2026 - offen,  V2: 21.01.2025 - 31.12.2025,  dann eine 3. Version 2023 einfügen.
+        var id = await CreateItemAsync(new DateOnly(2026, 1, 1), amount: 3500m);
+        await _items.AddVersionAsync(id, new CreateBudgetItemVersionRequest(
+            3400m, BudgetFrequency.Monthly, new DateOnly(2025, 1, 21), null, null, null));
+
+        // Dritte Version VOR beiden – früher: „überschneidet sich" (fälschlich bis 31.12.2025).
+        await _items.AddVersionAsync(id, new CreateBudgetItemVersionRequest(
+            3200m, BudgetFrequency.Monthly, new DateOnly(2023, 3, 21), null, null, null));
+
+        var item = (await _items.GetByIdAsync(id))!;
+        item.Versions.Should().HaveCount(3);
+
+        var v2023 = item.Versions.Single(v => v.ValidFrom == new DateOnly(2023, 3, 21));
+        // Endet am Monat VOR dem nächsten Eintrag (21.01.2025) -> 31.12.2024, nicht 31.12.2025.
+        v2023.ValidTo.Should().Be(new DateOnly(2024, 12, 31));
+
+        // Bestehende Einträge unverändert.
+        item.Versions.Single(v => v.ValidFrom == new DateOnly(2025, 1, 21)).ValidTo
+            .Should().Be(new DateOnly(2025, 12, 31));
+        item.Versions.Single(v => v.ValidFrom == new DateOnly(2026, 1, 1)).ValidTo
+            .Should().BeNull();
+    }
 }
