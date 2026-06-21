@@ -3,6 +3,7 @@ using BudgetPilot.Application.DependencyInjection;
 using BudgetPilot.Infrastructure;
 using BudgetPilot.Infrastructure.Data;
 using BudgetPilot.Infrastructure.Seeding;
+using BudgetPilot.Web.Api;
 using BudgetPilot.Web.Components;
 using BudgetPilot.Web.Components.Account;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -39,6 +40,7 @@ builder.Services.AddAuthentication(options =>
         options.DefaultScheme = IdentityConstants.ApplicationScheme;
         options.DefaultSignInScheme = IdentityConstants.ApplicationScheme;
     })
+    .AddBearerToken(IdentityConstants.BearerScheme) // Token-Auth für die Android-API (/api/*)
     .AddIdentityCookies();
 
 builder.Services.AddIdentityCore<IdentityUser>(options =>
@@ -54,6 +56,15 @@ builder.Services.AddIdentityCore<IdentityUser>(options =>
 
 // All routed pages require authentication unless they opt out with [AllowAnonymous].
 builder.Services.AddAuthorization();
+
+// ── JSON-API für die Android-App ─────────────────────────────────────────────
+// Enums als Strings serialisieren (z. B. "Income", "Monthly") – stabiler Vertrag.
+builder.Services.ConfigureHttpJsonOptions(options =>
+    options.SerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter()));
+
+// OpenAPI/Swagger – liefert den API-Vertrag (Basis für den Retrofit-Client).
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 
 // Composition root: each layer registers itself via one extension method.
 builder.Services.AddApplication();
@@ -92,6 +103,17 @@ app.UseAntiforgery();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
+
+// ── JSON-API (Android) ───────────────────────────────────────────────────────
+app.MapAuthApi();   // /api/auth/login, /api/auth/refresh (Bearer-Token)
+app.MapDataApi();   // /api/v1/... (Bearer-geschützt)
+
+// Swagger nur außerhalb der Produktion (API-Vertrag fürs Entwickeln).
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
 
 app.Run();
 

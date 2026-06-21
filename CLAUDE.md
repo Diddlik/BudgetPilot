@@ -26,8 +26,17 @@ user, public registration disabled, account seeded on startup from
 Login/logout are static-SSR pages under `Components/Account` (cookie sign-in needs an
 HTTP context, not a SignalR circuit); every other page gets `[Authorize]` via
 `Components/_Imports.razor`, while account/error pages opt out with `[AllowAnonymous]`.
-The Identity store is the foundation for the future Android bearer-token API
-(`.AddApiEndpoints()` is wired; token endpoints get mapped with the data API later).
+**JSON API (for the Android app):** a versioned REST API lives in
+`src/BudgetPilot.Web/Api/` — `AuthEndpoints.cs` maps `/api/auth/login` + `/refresh`
+(ASP.NET Identity **bearer tokens**, `IdentityConstants.BearerScheme`; deliberately
+no `/register` — accounts are admin-created), and `DataEndpoints.cs` maps
+`/api/v1/...` (categories, budget-items, versions, projections, audit) as a thin
+layer over the existing Application services/DTOs, protected with the bearer scheme
+(`RequireAuthorization`), antiforgery disabled, `DomainException` → RFC-7807
+ProblemDetails (400) via an endpoint filter. Enums serialize as strings
+(`ConfigureHttpJsonOptions`). Swagger/OpenAPI is served at `/swagger` in
+Development (the contract for the Retrofit client). The web UI keeps using cookies;
+the API uses bearer. Android app requirements/plan: `Docs/ANDROID_APP_REQUIREMENTS.md`.
 Internet exposure: Caddy reverse proxy (`docker-compose.prod.yml` + `Caddyfile`,
 TLS via Let's Encrypt); the app honours `X-Forwarded-Proto` (`UseForwardedHeaders`).
 Secrets live in `.env` (gitignored; see `.env.example`).

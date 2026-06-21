@@ -12,6 +12,8 @@
     <!-- Configuration abstractions for AddInfrastructure(IConfiguration) -->
     <PackageVersion Include="Microsoft.Extensions.Configuration.Abstractions" Version="8.0.0" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.2" />
+    <!-- OpenAPI/Swagger für die JSON-API (Android-Client-Vertrag) -->
+    <PackageVersion Include="Swashbuckle.AspNetCore" Version="6.6.2" />
     <!-- Testing -->
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
     <PackageVersion Include="xunit" Version="2.9.0" />

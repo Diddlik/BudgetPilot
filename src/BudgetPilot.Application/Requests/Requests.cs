@@ -44,3 +44,6 @@ public record UpdateVersionRequest(
 
 /// <summary>Legt eine neue Kategorie an.</summary>
 public record CreateCategoryRequest(string Name);
+
+/// <summary>Benennt eine Kategorie um (API).</summary>
+public record RenameCategoryRequest(string Name);
