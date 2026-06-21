@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Basis-Theme; das eigentliche UI-Theming macht Compose (Material 3). -->
+    <style name="Theme.BudgetPilot" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>

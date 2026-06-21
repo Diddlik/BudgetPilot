@@ -41,6 +41,16 @@ Internet exposure: Caddy reverse proxy (`docker-compose.prod.yml` + `Caddyfile`,
 TLS via Let's Encrypt); the app honours `X-Forwarded-Proto` (`UseForwardedHeaders`).
 Secrets live in `.env` (gitignored; see `.env.example`).
 
+**Android app (P1 scaffold):** `android/` is a standalone Gradle/Kotlin project
+(Jetpack Compose, Hilt, Retrofit/OkHttp, KSP) — **not** part of `BudgetPilot.sln`
+and not built by the .NET/Docker CI. It talks to the JSON API: Setup
+(instance-URL) → Login (bearer token, secure `EncryptedSharedPreferences`, auto
+refresh via OkHttp `Authenticator`) → Dashboard (loads the monthly projection +
+categories). Dynamic base URL via a `BaseUrlInterceptor` (Retrofit base URL is a
+placeholder). Open the `android/` folder directly in Android Studio. This
+environment has no Android SDK/Gradle, so the app can't be built/verified here —
+see `android/README.md`. Requirements/plan: `Docs/ANDROID_APP_REQUIREMENTS.md`.
+
 **CI/CD & auto-update:** `.github/workflows/docker.yml` builds the image on every
 push to `main` and publishes it to GHCR as `ghcr.io/diddlik/budgetpilot:latest`
 (+ a `sha-<commit>` tag for rollback). The production server does **not** build —
