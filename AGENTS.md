@@ -62,6 +62,9 @@ versioning and validation stay server-side. The MAUI project uses its own
 `BudgetPilot.sln` or the .NET/Docker CI. Build the MAUI track from `androidNet/`:
 `dotnet workload restore`, then `dotnet build BudgetPilot.Mobile.csproj -f
 net10.0-android36.1`. Requirements/plan: `Docs/ANDROID_APP_REQUIREMENTS.md`.
+The public privacy policy is deployed from `site/` via
+`.github/workflows/pages.yml` to
+`https://diddlik.github.io/BudgetPilot/privacy/` and linked from mobile settings.
 
 **CI/CD & auto-update:** `.github/workflows/docker.yml` builds the image on every
 push to `main` and publishes it to GHCR as `ghcr.io/diddlik/budgetpilot:latest`

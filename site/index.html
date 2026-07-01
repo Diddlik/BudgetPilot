@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="index,follow">
+  <meta name="theme-color" content="#c2410c">
+  <title>BudgetPilot</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+      color: #241f18;
+      background: #f4eee3;
+    }
+    * { box-sizing: border-box; }
+    body {
+      min-height: 100vh;
+      margin: 0;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+    main {
+      width: min(680px, 100%);
+      padding: clamp(28px, 7vw, 64px);
+      border: 1px solid #e4dac9;
+      border-radius: 24px;
+      background: #fffdf9;
+      box-shadow: 0 24px 70px rgb(74 55 28 / 10%);
+    }
+    .mark {
+      width: 46px;
+      height: 46px;
+      display: grid;
+      place-items: center;
+      margin-bottom: 28px;
+      border-radius: 14px;
+      color: white;
+      background: #c2410c;
+      font-size: 20px;
+      font-weight: 800;
+    }
+    h1 {
+      margin: 0 0 12px;
+      font-size: clamp(2.2rem, 8vw, 4rem);
+      line-height: .95;
+      letter-spacing: -.05em;
+    }
+    p {
+      max-width: 52ch;
+      margin: 0 0 28px;
+      color: #6f665a;
+      line-height: 1.65;
+    }
+    a {
+      display: inline-flex;
+      min-height: 46px;
+      align-items: center;
+      padding: 0 18px;
+      border-radius: 12px;
+      color: white;
+      background: #c2410c;
+      font-weight: 750;
+      text-decoration: none;
+    }
+    a:focus-visible { outline: 3px solid #1e7a4d; outline-offset: 3px; }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="mark" aria-hidden="true">B</div>
+    <h1>BudgetPilot</h1>
+    <p>Dein selbst gehostetes Haushaltsbudget – klar planen und sicher im Blick behalten.</p>
+    <a href="./privacy/">Datenschutzrichtlinie</a>
+  </main>
+</body>
+</html>

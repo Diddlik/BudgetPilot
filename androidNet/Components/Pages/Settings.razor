@@ -98,6 +98,7 @@
         <div class="settings-card">
             <div class="setting-row"><span>Version</span><strong>@appVersion (@appBuild)</strong></div>
             <div class="setting-row divided"><span>Plattform</span><strong>.NET MAUI · Android</strong></div>
+            <button class="settings-action" @onclick="OpenPrivacyPolicyAsync"><span>Datenschutzrichtlinie</span><b aria-hidden="true">↗</b></button>
         </div>
     </section>
 </section>
@@ -230,6 +231,11 @@
     }
 
     private void ClearMessages() { error = null; success = null; }
+
+    private static Task OpenPrivacyPolicyAsync() =>
+        Browser.Default.OpenAsync(
+            new Uri("https://diddlik.github.io/BudgetPilot/privacy/"),
+            BrowserLaunchMode.SystemPreferred);
 
     private static string FormatBytes(long bytes)
     {

@@ -9,6 +9,9 @@ mit der bestehenden JSON-API (`/api/auth` + `/api/v1`). Fachliche Logik wie
 Projektion, Versionierung und Validierung bleibt im Backend; die App
 wiederverwendet vorhandene Application-DTOs und Domain-Enums per ProjectReference.
 
+Öffentliche Datenschutzrichtlinie:
+<https://diddlik.github.io/BudgetPilot/privacy/>
+
 ## Stack
 
 - .NET 8, .NET MAUI, Blazor Hybrid (`BlazorWebView`)

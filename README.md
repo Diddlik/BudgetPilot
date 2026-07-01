@@ -103,6 +103,9 @@ werden.
 Weitere Details stehen in den READMEs der jeweiligen Android-Projekte und in
 [`Docs/ANDROID_APP_REQUIREMENTS.md`](Docs/ANDROID_APP_REQUIREMENTS.md).
 
+Datenschutzrichtlinie:
+<https://diddlik.github.io/BudgetPilot/privacy/>
+
 ## Produktion und automatische Updates
 
 Die empfohlene Server-Variante zieht das auf GitHub Actions gebaute Image aus

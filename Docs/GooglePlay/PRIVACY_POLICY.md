@@ -2,16 +2,21 @@
 
 **Stand:** 01.07.2026
 
-> Vor Veröffentlichung alle `[EINTRAGEN]`-Felder ersetzen und diese Richtlinie
-> unter einer dauerhaft öffentlichen HTTPS-Adresse bereitstellen.
+**Öffentliche Fassung:** <https://diddlik.github.io/BudgetPilot/privacy/>
 
 ## 1. Verantwortlicher und Kontakt
 
-Verantwortlich für die Veröffentlichung der BudgetPilot-App:
+Verantwortlich für die Veröffentlichung der BudgetPilot-App ist das private
+Softwareprojekt BudgetPilot:
 
-`[EINTRAGEN: Name oder Unternehmen und vollständige Kontaktanschrift]`
+<address>
+BudgetPilot<br>
+Clementine-Röper-Str. 7<br>
+59063 Hamm<br>
+Deutschland
+</address>
 
-Datenschutzkontakt: `[EINTRAGEN: E-Mail-Adresse]`
+Datenschutzkontakt: <digiwo@gmail.com>
 
 BudgetPilot verbindet sich ausschließlich mit der BudgetPilot-Instanz, deren
 Adresse der Nutzer selbst in der App einträgt. Der Betreiber dieser Instanz ist
@@ -59,8 +64,9 @@ App entfernt werden.
 
 Konten können nicht innerhalb der App erstellt werden. Für Berichtigung,
 Export oder Löschung des Kontos und der serverseitigen Budgetdaten ist der
-Betreiber der verbundenen BudgetPilot-Instanz zu kontaktieren:
-`[EINTRAGEN: Kontakt oder Löschweg für die öffentliche Review-/Standardinstanz]`.
+Betreiber der verbundenen BudgetPilot-Instanz zu kontaktieren. Für Fragen zur
+öffentlichen BudgetPilot-App oder zur Review-Instanz ist
+<digiwo@gmail.com> erreichbar.
 
 ## 6. Änderungen
 

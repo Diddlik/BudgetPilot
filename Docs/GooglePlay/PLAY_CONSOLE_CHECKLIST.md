@@ -74,10 +74,10 @@ App soll ohne Werbung und ohne In-App-Käufe veröffentlicht werden.
 
 | Feld | Eintrag |
 |---|---|
-| Support-E-Mail | `[EINTRAGEN: dauerhaft betreute E-Mail-Adresse]` |
-| Website | `[EINTRAGEN: öffentliche HTTPS-Projekt- oder Supportseite]` |
+| Support-E-Mail | `digiwo@gmail.com` |
+| Website | `https://diddlik.github.io/BudgetPilot/` |
 | Telefon | leer lassen, sofern kein öffentlicher Support per Telefon angeboten wird |
-| Datenschutzrichtlinie | `[EINTRAGEN: öffentliche HTTPS-URL zur finalisierten PRIVACY_POLICY.md]` |
+| Datenschutzrichtlinie | `https://diddlik.github.io/BudgetPilot/privacy/` |
 
 ## 3. Grafiken
 
@@ -187,7 +187,7 @@ Zusätzliche Antworten:
 - [x] Mindestversion: Android 8 / API 26
 - [x] Target: Android API 36.1 (übertrifft die aktuelle API-35-Mindestanforderung)
 - [ ] Öffentliche HTTPS-Demo-Instanz und Review-Konto bereitstellen
-- [ ] Datenschutzrichtlinie finalisieren und öffentlich per HTTPS veröffentlichen
+- [x] Datenschutzrichtlinie finalisieren und Veröffentlichung per GitHub Pages konfigurieren
 - [x] Eigene Upload-Key-Datei sicher erzeugen und außerhalb des Repositories sichern
 - [ ] Play App Signing aktivieren; Google den App-Signing-Key erzeugen lassen
 - [x] Signiertes Android App Bundle (`.aab`) bauen
