@@ -55,7 +55,9 @@ class LoginViewModel @Inject constructor(
                 onLoggedIn()
                 state.copy(loading = false)
             } else {
-                state.copy(loading = false, error = "Anmeldung fehlgeschlagen. E-Mail/Passwort prüfen.")
+                // Konkrete Ursache zeigen (401 vs. nicht erreichbar), nicht pauschal.
+                val message = result.exceptionOrNull()?.message ?: "Anmeldung fehlgeschlagen."
+                state.copy(loading = false, error = message)
             }
         }
     }

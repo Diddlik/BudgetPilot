@@ -33,6 +33,7 @@ builder.Services.AddRazorComponents()
 
 // ── Authentication & Identity ────────────────────────────────────────────────
 builder.Services.AddCascadingAuthenticationState();
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuthenticationStateProvider>();
 
 builder.Services.AddAuthentication(options =>

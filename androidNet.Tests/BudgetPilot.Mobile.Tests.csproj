@@ -15,5 +15,6 @@
     <Compile Include="..\androidNet\Services\PinPolicy.cs" Link="Services\PinPolicy.cs" />
     <Compile Include="..\androidNet\Services\VersionFormModel.cs" Link="Services\VersionFormModel.cs" />
     <Compile Include="..\androidNet\Services\BudgetItemInputValidator.cs" Link="Services\BudgetItemInputValidator.cs" />
+    <Compile Include="..\androidNet\Services\InstanceAddress.cs" Link="Services\InstanceAddress.cs" />
   </ItemGroup>
 </Project>

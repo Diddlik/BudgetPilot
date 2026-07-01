@@ -9,4 +9,5 @@
 .cxx/
 *.apk
 *.aab
+/app/build/
 /app/release/

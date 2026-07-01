@@ -2,7 +2,7 @@
 
 Native Begleit-App (Kotlin / Jetpack Compose), die mit einer selbst-gehosteten
 BudgetPilot-Instanz über die JSON-API (`/api/auth` + `/api/v1`) kommuniziert.
-Dies ist das **P1-Grundgerüst** (siehe `../Docs/ANDROID_APP_REQUIREMENTS.md`).
+Dies ist das **P1-Grundgerüst** des Kotlin-/Jetpack-Compose-Ansatzes (siehe `../Docs/ANDROID_APP_REQUIREMENTS.md`). Der parallele .NET-MAUI-Ansatz lebt in `../androidNet/`.
 
 ## Stack
 - Kotlin, Jetpack Compose (Material 3), Navigation-Compose

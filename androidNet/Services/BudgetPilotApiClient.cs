@@ -385,8 +385,8 @@ public sealed class BudgetPilotApiClient
     }
 
     private static string UnreachableMessage(HttpRequestException ex) =>
-        "Instanz nicht erreichbar. Prüfe die Instanz-URL und ob der Server läuft " +
-        $"(im Emulator: http://10.0.2.2:5070). Details: {ex.Message}";
+        "Instanz nicht erreichbar. Prüfe die Instanz-URL, die Internetverbindung und ob der Server läuft. " +
+        $"Details: {ex.Message}";
 
     private sealed record LoginRequest(string Email, string Password);
     private sealed record RefreshRequest(string RefreshToken);

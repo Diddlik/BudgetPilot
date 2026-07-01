@@ -128,12 +128,19 @@ code {
 .brand-mark {
     width: 42px;
     height: 42px;
+    flex: 0 0 42px;
     display: grid;
     place-items: center;
-    border-radius: 13px;
-    color: #fff;
-    background: var(--accent);
-    font-weight: 850;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.brand-mark img {
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+    display: block;
+    object-fit: contain;
 }
 
 .brand-row strong {
@@ -236,10 +243,97 @@ code {
     font-size: 1.08rem;
 }
 
-.login-panel-heading span {
+.login-panel-heading .connection-status {
     color: var(--income);
     font-size: .68rem;
     font-weight: 850;
+    text-align: right;
+}
+
+.login-panel-heading .connection-status.insecure {
+    color: var(--expense);
+}
+
+.instance-address {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 8px;
+}
+
+.scheme-switch {
+    min-height: 48px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: center;
+    padding: 4px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: #F1EADF;
+}
+
+.scheme-switch button {
+    min-height: 38px;
+    padding: 0 9px;
+    border: 0;
+    border-radius: 9px;
+    color: var(--muted);
+    background: transparent;
+    font-size: .66rem;
+    font-weight: 850;
+}
+
+.scheme-switch button.active {
+    color: var(--ink);
+    background: var(--surface);
+    box-shadow: 0 1px 4px rgba(60, 48, 28, .12);
+}
+
+.scheme-switch button:focus-visible,
+.password-toggle:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+}
+
+.host-field {
+    min-width: 0;
+}
+
+.password-field {
+    position: relative;
+    display: block;
+}
+
+.password-field .field {
+    padding-right: 52px;
+}
+
+.password-toggle {
+    position: absolute;
+    width: 44px;
+    height: 44px;
+    top: 2px;
+    right: 3px;
+    display: grid;
+    place-items: center;
+    border: 0;
+    border-radius: 10px;
+    color: var(--muted);
+    background: transparent;
+}
+
+.password-toggle:active {
+    color: var(--accent);
+    background: var(--expense-soft);
+}
+
+.password-toggle svg {
+    width: 21px;
+    height: 21px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
 }
 
 .login-submit {
@@ -264,12 +358,17 @@ code {
     font-size: .62rem;
 }
 
-label {
+label,
+.form-field {
     display: grid;
     gap: 6px;
     color: var(--muted);
     font-size: .76rem;
     font-weight: 800;
+}
+
+.form-field label {
+    display: block;
 }
 
 .field {

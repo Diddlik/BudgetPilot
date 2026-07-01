@@ -1,0 +1,18 @@
+<svg width="1024" height="500" viewBox="0 0 1024 500" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1024" height="500" fill="#F4EEE3"/>
+  <circle cx="900" cy="72" r="176" fill="#E9DDCC"/>
+  <circle cx="793" cy="462" r="210" fill="#F0E4D5"/>
+  <path d="M680 395c78-24 145-74 199-153" fill="none" stroke="#63B987" stroke-width="18" stroke-linecap="round"/>
+  <path d="m849 239 34-5-7 34" fill="none" stroke="#63B987" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+  <g transform="translate(96 94) scale(.61)">
+    <rect width="512" height="512" rx="116" fill="#C2410C"/>
+    <path d="M148 116h126c73 0 116 34 116 91 0 38-21 66-58 80 44 13 69 46 69 91 0 65-48 102-126 102H148V116Z" fill="#FFF7ED"/>
+    <path d="M211 174h57c38 0 57 13 57 40 0 28-20 42-60 42h-54v-82Zm0 138h62c42 0 63 16 63 47 0 30-21 45-64 45h-61v-92Z" fill="#C2410C"/>
+    <path d="m228 360 45-45 39 25 64-80" fill="none" stroke="#63B987" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="m348 259 31-3-4 31" fill="none" stroke="#63B987" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="228" cy="360" r="12" fill="#63B987"/>
+  </g>
+  <text x="448" y="205" fill="#241F18" font-family="Plus Jakarta Sans, Segoe UI, sans-serif" font-size="70" font-weight="800" letter-spacing="-3">BudgetPilot</text>
+  <text x="452" y="261" fill="#766C5F" font-family="Plus Jakarta Sans, Segoe UI, sans-serif" font-size="27" font-weight="600">Dein Haushalt. Klar geplant.</text>
+  <rect x="452" y="306" width="94" height="8" rx="4" fill="#C2410C"/>
+</svg>

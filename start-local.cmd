@@ -27,7 +27,7 @@ echo  Zum Beenden in diesem Fenster STRG+C druecken.
 echo ============================================================
 echo.
 
-dotnet run --project "src\BudgetPilot.Web" --launch-profile https
+dotnet run --project "src\BudgetPilot.Web" --launch-profile http
 
 echo.
 echo BudgetPilot wurde beendet.

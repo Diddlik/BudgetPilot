@@ -6,7 +6,9 @@
 
 <section class="auth-screen login-screen">
     <div class="brand-row login-brand">
-        <div class="brand-mark" aria-hidden="true">B</div>
+        <div class="brand-mark">
+            <img src="brand/budgetpilot-mark.svg?v=2" width="42" height="42" alt="" />
+        </div>
         <div>
             <strong>BudgetPilot</strong>
             <span>Dein Haushalt. Klar geplant.</span>
@@ -22,7 +24,9 @@
     <form class="panel auth-panel login-panel" @onsubmit="LoginAsync" @onsubmit:preventDefault="true">
         <div class="login-panel-heading">
             <h2>Anmelden</h2>
-            <span>Geschützte Verbindung</span>
+            <span class="@("connection-status " + (scheme == "https" ? "secure" : "insecure"))">
+                @(scheme == "https" ? "Geschützte Verbindung" : "Unverschlüsselte Verbindung")
+            </span>
         </div>
 
         @if (!string.IsNullOrWhiteSpace(error))
@@ -30,11 +34,24 @@
             <div class="alert" role="alert">@error</div>
         }
 
-        <label>
-            Instanz-URL
-            <input class="field" type="url" inputmode="url" autocomplete="url"
-                   placeholder="https://budget.example.de" required @bind="baseUrl" />
-        </label>
+        <div class="form-field">
+            <label for="instance-host">Instanz</label>
+            <span class="instance-address">
+                <span class="scheme-switch" aria-label="Verbindungsprotokoll">
+                    <button type="button" class="@(scheme == "https" ? "active" : null)"
+                            aria-pressed="@(scheme == "https")" @onclick="UseHttps">
+                        HTTPS
+                    </button>
+                    <button type="button" class="@(scheme == "http" ? "active" : null)"
+                            aria-pressed="@(scheme == "http")" @onclick="UseHttp">
+                        HTTP
+                    </button>
+                </span>
+                <input id="instance-host" class="field host-field" type="text" inputmode="url" autocomplete="url"
+                       autocapitalize="none" spellcheck="false"
+                       placeholder="budget.example.de" required @bind="host" />
+            </span>
+        </div>
 
         <label>
             E-Mail
@@ -42,11 +59,31 @@
                    placeholder="name@example.de" required @bind="email" />
         </label>
 
-        <label>
-            Passwort
-            <input class="field" type="password" autocomplete="current-password"
-                   placeholder="Dein Passwort" required @bind="password" />
-        </label>
+        <div class="form-field">
+            <label for="login-password">Passwort</label>
+            <span class="password-field">
+                <input id="login-password" class="field" type="@(showPassword ? "text" : "password")"
+                       autocomplete="current-password" placeholder="Dein Passwort"
+                       required @bind="password" />
+                <button type="button" class="password-toggle"
+                        aria-label="@(showPassword ? "Passwort verbergen" : "Passwort anzeigen")"
+                        aria-pressed="@showPassword" @onclick="TogglePasswordVisibility">
+                    @if (showPassword)
+                    {
+                        <svg aria-hidden="true" viewBox="0 0 24 24">
+                            <path d="M3 3l18 18M10.6 10.7a2 2 0 002.7 2.7M9.9 4.2A10.8 10.8 0 0112 4c5.2 0 9 5.3 9 5.3a15.8 15.8 0 01-2.7 3.2M6.6 6.6A16.3 16.3 0 003 9.3s3.8 5.3 9 5.3c1 0 2-.2 2.9-.5" />
+                        </svg>
+                    }
+                    else
+                    {
+                        <svg aria-hidden="true" viewBox="0 0 24 24">
+                            <path d="M3 12s3.8-5.3 9-5.3S21 12 21 12s-3.8 5.3-9 5.3S3 12 3 12z" />
+                            <circle cx="12" cy="12" r="2.4" />
+                        </svg>
+                    }
+                </button>
+            </span>
+        </div>
 
         <button class="button primary login-submit" type="submit" disabled="@isBusy">
             @(isBusy ? "Anmeldung läuft..." : "Sicher anmelden")
@@ -60,11 +97,13 @@
 </section>
 
 @code {
-    private string baseUrl = string.Empty;
+    private string scheme = "https";
+    private string host = string.Empty;
     private string email = string.Empty;
     private string password = string.Empty;
     private string? error;
     private bool isBusy;
+    private bool showPassword;
 
     protected override async Task OnInitializedAsync()
     {
@@ -72,7 +111,9 @@
 
         if (!string.IsNullOrWhiteSpace(Session.BaseUrl))
         {
-            baseUrl = Session.BaseUrl;
+            var uri = new Uri(Session.BaseUrl);
+            scheme = uri.Scheme;
+            host = uri.Authority;
         }
 
         if (Session.IsSignedIn)
@@ -93,7 +134,7 @@
 
         try
         {
-            await Session.SetBaseUrlAsync(baseUrl);
+            await Session.SetBaseUrlAsync($"{scheme}://{host}");
             await Api.LoginAsync(email, password);
             Navigation.NavigateTo(Preferences.StartRoute, replace: true);
         }
@@ -106,4 +147,10 @@
             isBusy = false;
         }
     }
+
+    private void TogglePasswordVisibility() => showPassword = !showPassword;
+
+    private void UseHttps() => scheme = "https";
+
+    private void UseHttp() => scheme = "http";
 }

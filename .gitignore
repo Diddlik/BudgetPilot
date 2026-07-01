@@ -491,3 +491,9 @@ $RECYCLE.BIN/
 
 # Local secrets (Docker env)
 .env
+
+# Local agent configuration
+.claude/
+
+# Isolated local build and screenshot instances
+.tmp-build/

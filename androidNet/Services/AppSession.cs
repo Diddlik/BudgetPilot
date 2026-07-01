@@ -40,7 +40,7 @@ public sealed class AppSession
 
     public Task SetBaseUrlAsync(string value)
     {
-        var normalized = NormalizeBaseUrl(value);
+        var normalized = InstanceAddress.Normalize(value);
         BaseUrl = normalized;
         Preferences.Default.Set(BaseUrlKey, normalized);
         IsLoaded = true;
@@ -73,39 +73,4 @@ public sealed class AppSession
         return Task.CompletedTask;
     }
 
-    private static string NormalizeBaseUrl(string value)
-    {
-        var candidate = value.Trim();
-        if (string.IsNullOrWhiteSpace(candidate) || candidate is "https://" or "http://")
-        {
-            throw new InvalidOperationException("Bitte eine gültige Instanz-URL eingeben, z. B. http://10.0.2.2:5070.");
-        }
-
-        if (!candidate.Contains("://", StringComparison.Ordinal))
-        {
-            candidate = IsLocalHost(candidate) ? $"http://{candidate}" : $"https://{candidate}";
-        }
-
-        if (!Uri.TryCreate(candidate, UriKind.Absolute, out var uri) || string.IsNullOrWhiteSpace(uri.Host))
-        {
-            throw new InvalidOperationException("Bitte eine gültige Instanz-URL eingeben, z. B. http://10.0.2.2:5070.");
-        }
-
-        var isLocalDev = uri.Scheme == Uri.UriSchemeHttp && IsLocalHost(uri.Host);
-
-        if (uri.Scheme != Uri.UriSchemeHttps && !isLocalDev)
-        {
-            throw new InvalidOperationException("Aus Sicherheitsgründen ist HTTPS erforderlich. HTTP ist nur für lokale Emulator-Tests erlaubt.");
-        }
-
-        return uri.GetLeftPart(UriPartial.Authority).TrimEnd('/');
-    }
-
-    private static bool IsLocalHost(string value)
-    {
-        var host = value.Split(':', 2)[0];
-        return host.Equals("10.0.2.2", StringComparison.OrdinalIgnoreCase)
-            || host.Equals("localhost", StringComparison.OrdinalIgnoreCase)
-            || host.Equals("127.0.0.1", StringComparison.OrdinalIgnoreCase);
-    }
 }

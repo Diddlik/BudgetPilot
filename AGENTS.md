@@ -7,7 +7,7 @@ This file provides guidance to Codex (Codex.ai/code) when working with code in t
 **MVP is complete and integrated on `main`:** all layers are implemented and
 merged — Domain rules + Application services/projection (Track A), EF Core/SQLite
 + migration + §12 seeding (Track B), Blazor UI for all screens (Track C). Full
-build is green and **62 tests pass** (Domain, Application with fakes, plus
+build is green and **74 tests pass** (Domain, Application with fakes, plus
 `BudgetPilot.Integration.Tests` exercising the real EF Core/SQLite/DateOnly-
 converter/seeder/projection stack against the §12 values). The app boots,
 migrates, seeds and serves locally **and** as a Docker container (`docker compose
@@ -52,12 +52,16 @@ paths, an offline read cache, optional local PIN lock, mobile tests, and a
 keystore-driven APK/AAB release script. The PIN lock can use AndroidX
 `BiometricPrompt` (fingerprint/face) with PIN fallback; `/settings` manages
 security, account/session, instance URL, default view/start page and offline
-cache. It reuses
+cache. The login accepts a hostname with an explicit HTTPS/HTTP selector; HTTPS
+is the default and HTTP is marked as unencrypted. Release builds derive Android
+`versionCode` from the Git commit count and `versionName` as `1.0.<count>`. It reuses
 existing Application DTOs and Domain enums via ProjectReference; projection,
-versioning and validation stay server-side. Neither Android project is part of
+versioning and validation stay server-side. The MAUI project uses its own
+`androidNet/global.json` and targets .NET 10 / Android API 36.1
+(`net10.0-android36.1`) for Google Play compliance. Neither Android project is part of
 `BudgetPilot.sln` or the .NET/Docker CI. Build the MAUI track from `androidNet/`:
 `dotnet workload restore`, then `dotnet build BudgetPilot.Mobile.csproj -f
-net8.0-android`. Requirements/plan: `Docs/ANDROID_APP_REQUIREMENTS.md`.
+net10.0-android36.1`. Requirements/plan: `Docs/ANDROID_APP_REQUIREMENTS.md`.
 
 **CI/CD & auto-update:** `.github/workflows/docker.yml` builds the image on every
 push to `main` and publishes it to GHCR as `ghcr.io/diddlik/budgetpilot:latest`
@@ -128,8 +132,9 @@ dotnet test tests/BudgetPilot.Domain.Tests             # one project
 dotnet test --filter "FullyQualifiedName~Quarterly"    # one test / group
 dotnet ef migrations add <Name> -p src/BudgetPilot.Infrastructure -s src/BudgetPilot.Web
 dotnet ef database update -p src/BudgetPilot.Infrastructure -s src/BudgetPilot.Web
-cd androidNet && dotnet workload restore && dotnet build BudgetPilot.Mobile.csproj -f net8.0-android
+cd androidNet && dotnet workload restore && dotnet build BudgetPilot.Mobile.csproj -f net10.0-android36.1
 dotnet test androidNet.Tests/BudgetPilot.Mobile.Tests.csproj -m:1
+androidNet/start-screenshot-instance.ps1 -Reset       # isolated dummy DB on :8089 for screenshots
 ```
 
 Docker (spec §11): container exposes port 8080; SQLite db lives in a mounted

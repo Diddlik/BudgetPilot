@@ -12,17 +12,18 @@ wiederverwendet vorhandene Application-DTOs und Domain-Enums per ProjectReferenc
 ## Stack
 
 - .NET 8, .NET MAUI, Blazor Hybrid (`BlazorWebView`)
-- Android Target `net8.0-android`, min-SDK 26
+- Android Target `net10.0-android36.1` (API 36.1), min-SDK 26
 - Bearer-Token-Auth gegen ASP.NET Core Identity (`/api/auth/login`, `/refresh`)
 - Access-/Refresh-Token in `SecureStorage`, Instanz-URL in `Preferences`
 - UI-Texte Deutsch, EUR-/Datumsformat `de-DE`
 
 ## Was es schon kann
 
-1. **Setup** - Instanz-URL eingeben, HTTPS erzwingen; HTTP nur für lokale
-   Emulator-Tests (`10.0.2.2`/`localhost`).
-2. **Login** - E-Mail/Passwort gegen `/api/auth/login`; Token werden sicher
-   gespeichert.
+1. **Setup/Login** - HTTPS oder HTTP auswählen und nur Hostname (optional mit
+   Port) eingeben. HTTPS ist vorausgewählt; HTTP wird als unverschlüsselt
+   gekennzeichnet.
+2. **Login** - E-Mail/Passwort gegen `/api/auth/login`; das Passwort kann über
+   das Augen-Symbol ein- und ausgeblendet werden. Token werden sicher gespeichert.
 3. **Dashboard** - lädt die Monatsprojektion aus `/api/v1/projections/monthly`,
    zeigt KPIs, Kategorie-Balken und Positionen, inklusive Budget-/Cashflow-Modus
    und Monatsnavigation.
@@ -50,7 +51,7 @@ wiederverwendet vorhandene Application-DTOs und Domain-Enums per ProjectReferenc
 ```bash
 cd androidNet
 dotnet workload restore
-dotnet build BudgetPilot.Mobile.csproj -f net8.0-android
+dotnet build BudgetPilot.Mobile.csproj -f net10.0-android36.1
 ```
 
 Das Projekt ist bewusst **nicht** Teil von `../BudgetPilot.sln`, damit der normale
@@ -59,16 +60,34 @@ Backend-/Docker-Build keine Android-/MAUI-Workload voraussetzt.
 ## Gegen die lokale Dev-Instanz testen (Emulator)
 
 1. Backend lokal starten: `dotnet run --project ../src/BudgetPilot.Web --launch-profile http`.
-2. Im Emulator als Instanz-URL `http://10.0.2.2:5070` verwenden (Debug-Builds schlagen diesen Wert bereits vor).
+2. Im Emulator `HTTP` auswählen und als Host `10.0.2.2:5070` verwenden.
 3. Login (Development): `admin@budgetpilot.local` / `ChangeMe!2026`.
 
 Für echte Geräte und produktive Nutzung HTTPS verwenden.
+
+## Screenshot-Instanz mit Dummy-Daten
+
+Für reproduzierbare GitHub-Screenshots startet ein eigener Modus mit separater
+SQLite-Datei und den vorhandenen §12-Demodaten:
+
+```powershell
+.\start-screenshot-instance.ps1 -Reset
+```
+
+- Web: `http://localhost:8089`
+- Android-Emulator: `http://10.0.2.2:8089`
+- E-Mail: `screenshots@budgetpilot.local`
+- Passwort: `Screenshots!2026`
+
+Die Datenbank liegt ausschließlich unter
+`.tmp-build/screenshot-instance/budgetpilot-screenshots.db`. Ohne `-Reset`
+bleiben Anpassungen zwischen Screenshot-Sessions erhalten.
 
 ## APK auf dem Ziel-Emulator installieren
 
 ```powershell
 $adb = "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe"
-& $adb -s emulator-5556 install -r "F:\Coding\BudgetPilot\androidNet\bin\Debug\net8.0-android\de.budgetpilot.mobile-Signed.apk"
+& $adb -s emulator-5556 install -r "F:\Coding\BudgetPilot\androidNet\bin\Debug\net10.0-android36.1\de.budgetpilot.mobile-Signed.apk"
 & $adb -s emulator-5556 shell am start -S -n de.budgetpilot.mobile/crc645ee8833f816a263c.MainActivity
 ```
 
@@ -77,12 +96,25 @@ Push-Install-Pfad:
 
 ```powershell
 $adb = "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe"
-& $adb -s emulator-5556 push "F:\Coding\BudgetPilot\androidNet\bin\Debug\net8.0-android\de.budgetpilot.mobile-Signed.apk" /data/local/tmp/de.budgetpilot.mobile-Signed.apk
+& $adb -s emulator-5556 push "F:\Coding\BudgetPilot\androidNet\bin\Debug\net10.0-android36.1\de.budgetpilot.mobile-Signed.apk" /data/local/tmp/de.budgetpilot.mobile-Signed.apk
 & $adb -s emulator-5556 shell pm install -r -d -g /data/local/tmp/de.budgetpilot.mobile-Signed.apk
 & $adb -s emulator-5556 shell rm /data/local/tmp/de.budgetpilot.mobile-Signed.apk
 ```
 
 ## Signiertes Release (APK + AAB)
+
+Für den ersten Google-Play-Release erzeugt der folgende Befehl den Upload-Key
+außerhalb des Repositories, prüft ihn und baut anschließend das signierte
+Android App Bundle. Das Passwort wird verdeckt abgefragt und nicht gespeichert:
+
+```powershell
+cd androidNet
+.\prepare-play-release.ps1
+```
+
+Der Upload-Key liegt standardmäßig unter
+`%USERPROFILE%\.android-keys\BudgetPilot\budgetpilot-upload.jks`. Keystore und
+Passwort müssen getrennt und sicher gesichert werden.
 
 Der private Keystore bleibt außerhalb des Repositories. Vor dem Release-Build
 werden vier Umgebungsvariablen gesetzt:
@@ -98,6 +130,17 @@ $env:BUDGETPILOT_KEY_PASSWORD = "<secret>"
 Das Skript erzeugt ein signiertes APK für Sideloading und ein AAB für Google
 Play unter `androidNet/artifacts/`. Der Keystore und Passwörter werden weder
 kopiert noch protokolliert.
+
+Die Android-Version wird dabei automatisch aus der vollständigen Git-Historie
+gesetzt:
+
+- `versionCode` = Anzahl der Commits auf `HEAD`
+- `versionName` = `1.0.<Commit-Anzahl>`
+
+Damit steigt der von Google Play verlangte `versionCode` mit jedem Commit.
+Release-Builds deshalb erst nach dem zu veröffentlichenden Commit erstellen.
+Bei einem flachen Clone bricht das Skript mit einem Hinweis auf
+`git fetch --unshallow` ab.
 
 ## Tests
 
