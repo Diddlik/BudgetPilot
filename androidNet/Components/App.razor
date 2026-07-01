@@ -1,0 +1,14 @@
+<Router AppAssembly="@typeof(App).Assembly">
+    <Found Context="routeData">
+        <RouteView RouteData="@routeData" DefaultLayout="@typeof(Layout.MainLayout)" />
+    </Found>
+    <NotFound>
+        <LayoutView Layout="@typeof(Layout.MainLayout)">
+            <section class="empty-state">
+                <p class="eyebrow">Nicht gefunden</p>
+                <h1>Diese Ansicht gibt es in der App noch nicht.</h1>
+                <a class="button secondary" href="/">Zur Einrichtung</a>
+            </section>
+        </LayoutView>
+    </NotFound>
+</Router>

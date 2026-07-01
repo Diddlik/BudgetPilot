@@ -1,0 +1,1 @@
+Static MAUI asset marker. App UI assets live in wwwroot for the BlazorWebView.

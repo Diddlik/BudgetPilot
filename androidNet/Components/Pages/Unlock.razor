@@ -1,0 +1,95 @@
+@page "/unlock"
+@inject AppLockService AppLock
+@inject BiometricAuthenticationService Biometrics
+@inject MobilePreferences MobilePreferences
+@inject NavigationManager Navigation
+
+<section class="auth-screen lock-screen">
+    <div class="brand-row">
+        <div class="brand-mark" aria-hidden="true">B</div>
+        <div>
+            <strong>BudgetPilot</strong>
+            <span>App-Sperre</span>
+        </div>
+    </div>
+    <div class="hero-copy">
+        <p class="eyebrow">Geschützt</p>
+        <h1>Willkommen zurück.</h1>
+        <p>Entsperre deine Budgetdaten biometrisch oder mit deiner lokalen App-PIN.</p>
+    </div>
+    <form class="panel auth-panel" @onsubmit="UnlockAsync" @onsubmit:preventDefault="true">
+        @if (!string.IsNullOrWhiteSpace(error))
+        {
+            <div class="alert" role="alert">@error</div>
+        }
+        <label>
+            App-PIN
+            <input class="field pin-field" type="password" inputmode="numeric" autocomplete="off"
+                   minlength="4" maxlength="8" required autofocus @bind="pin" />
+        </label>
+        @if (Biometrics.IsEnabled)
+        {
+            <button class="button biometric" type="button" disabled="@biometricBusy" @onclick="UnlockBiometricallyAsync">
+                <span aria-hidden="true">◎</span>
+                @(biometricBusy ? "Biometrie wird geprüft..." : "Mit Biometrie entsperren")
+            </button>
+            <div class="auth-divider"><span>oder mit PIN</span></div>
+        }
+        <button class="button primary" type="submit">Mit PIN entsperren</button>
+    </form>
+</section>
+
+@code {
+    private string pin = string.Empty;
+    private string? error;
+    private bool biometricBusy;
+    private bool biometricAttempted;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await AppLock.LoadAsync();
+        if (!AppLock.IsEnabled || AppLock.IsUnlocked)
+        {
+            Navigation.NavigateTo(MobilePreferences.StartRoute, replace: true);
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && Biometrics.IsEnabled && !biometricAttempted)
+        {
+            biometricAttempted = true;
+            await UnlockBiometricallyAsync();
+        }
+    }
+
+    private async Task UnlockAsync()
+    {
+        error = await AppLock.UnlockAsync(pin) ? null : "Die eingegebene App-PIN ist falsch.";
+        if (error is null)
+        {
+            Navigation.NavigateTo(MobilePreferences.StartRoute, replace: true);
+        }
+    }
+
+    private async Task UnlockBiometricallyAsync()
+    {
+        if (biometricBusy) return;
+        error = null;
+        biometricBusy = true;
+        try
+        {
+            var result = await Biometrics.AuthenticateAsync("Mit Fingerabdruck oder Gesicht fortfahren");
+            if (result.Success)
+            {
+                AppLock.UnlockAfterBiometricAuthentication();
+                Navigation.NavigateTo(MobilePreferences.StartRoute, replace: true);
+            }
+            else if (!result.Cancelled)
+            {
+                error = result.ErrorMessage ?? "Biometrische Anmeldung fehlgeschlagen. Verwende deine App-PIN.";
+            }
+        }
+        finally { biometricBusy = false; }
+    }
+}

@@ -1,0 +1,202 @@
+@page "/dashboard"
+@inject AppSession Session
+@inject BudgetPilotApiClient Api
+@inject MobilePreferences Preferences
+@inject NavigationManager Navigation
+
+<section class="dashboard-screen">
+    <header class="topbar">
+        <div>
+            <p class="eyebrow">Dashboard</p>
+            <h1>@MonthLabel</h1>
+            <span>@Session.BaseUrl</span>
+        </div>
+    </header>
+    <OfflineNotice />
+
+    <div class="month-controls">
+        <button class="icon-button" title="Vorheriger Monat" @onclick="PreviousMonth">‹</button>
+        <div class="segmented">
+            <button class="@(viewMode == BudgetViewMode.Budget ? "active" : null)" @onclick="() => SetMode(BudgetViewMode.Budget)">Budget</button>
+            <button class="@(viewMode == BudgetViewMode.Cashflow ? "active" : null)" @onclick="() => SetMode(BudgetViewMode.Cashflow)">Cashflow</button>
+        </div>
+        <button class="icon-button" title="Nächster Monat" @onclick="NextMonth">›</button>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(error))
+    {
+        <div class="alert">@error</div>
+    }
+    else if (isLoading)
+    {
+        <div class="panel loading-panel">Lade Monatsdaten...</div>
+    }
+    else if (projection is not null)
+    {
+        <div class="kpi-grid">
+            <article class="kpi-card income">
+                <span>Einnahmen</span>
+                <strong>@Money(projection.TotalIncome)</strong>
+            </article>
+            <article class="kpi-card expense">
+                <span>Ausgaben</span>
+                <strong>@Money(projection.TotalExpense)</strong>
+            </article>
+            <article class="kpi-card balance @(projection.Balance >= 0 ? "positive" : "negative")">
+                <span>Saldo</span>
+                <strong>@Money(projection.Balance)</strong>
+            </article>
+        </div>
+
+        <section class="panel">
+            <div class="panel-header">
+                <h2>Kategorien</h2>
+                <span>@projection.Categories.Count Ausgabengruppen</span>
+            </div>
+
+            @if (projection.Categories.Count == 0)
+            {
+                <p class="muted">Noch keine Kategorieausgaben in diesem Monat.</p>
+            }
+            else
+            {
+                <div class="bar-list">
+                    @foreach (var category in projection.Categories.OrderByDescending(c => c.TotalAmount))
+                    {
+                        var width = CategoryWidth(category.TotalAmount);
+                        <div class="bar-row">
+                            <div>
+                                <strong>@category.CategoryName</strong>
+                                <span>@Money(category.TotalAmount)</span>
+                            </div>
+                            <div class="bar-track"><span style="width:@width%"></span></div>
+                        </div>
+                    }
+                </div>
+            }
+        </section>
+
+        <section class="panel">
+            <div class="panel-header">
+                <h2>Positionen</h2>
+                <span>@projection.Lines.Count Einträge</span>
+            </div>
+            <div class="line-list">
+                @foreach (var line in projection.Lines.OrderBy(l => l.Type).ThenBy(l => l.CategoryName).ThenBy(l => l.BudgetItemName))
+                {
+                    <article class="budget-line">
+                        <div>
+                            <strong>@line.BudgetItemName</strong>
+                            <span>@line.CategoryName · @FrequencyLabel(line.Frequency)</span>
+                        </div>
+                        @if (line.IsDue)
+                        {
+                            <span class="pill neutral">fällig</span>
+                        }
+                        <strong class="numeric @(line.Type == BudgetItemType.Income ? "text-positive" : null)">@Money(line.ProjectedMonthlyAmount)</strong>
+                    </article>
+                }
+            </div>
+        </section>
+    }
+
+    <AppNavigation />
+</section>
+
+@code {
+    private static readonly CultureInfo GermanCulture = CultureInfo.GetCultureInfo("de-DE");
+
+    private MonthlyBudgetProjectionDto? projection;
+    private DateTime currentMonth = new(DateTime.Today.Year, DateTime.Today.Month, 1);
+    private BudgetViewMode viewMode;
+    private bool isLoading = true;
+    private string? error;
+
+    private string MonthLabel => currentMonth.ToString("MMMM yyyy", GermanCulture);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Session.LoadAsync();
+        viewMode = Preferences.DefaultViewMode;
+
+        if (!Session.IsSignedIn)
+        {
+            Navigation.NavigateTo("/", replace: true);
+            return;
+        }
+
+        await LoadProjectionAsync();
+    }
+
+    private async Task LoadProjectionAsync()
+    {
+        error = null;
+        isLoading = true;
+
+        try
+        {
+            projection = await Api.GetMonthlyProjectionAsync(currentMonth.Year, currentMonth.Month, viewMode);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            await Session.ClearAsync();
+            Navigation.NavigateTo("/", replace: true);
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task PreviousMonth()
+    {
+        currentMonth = currentMonth.AddMonths(-1);
+        await LoadProjectionAsync();
+    }
+
+    private async Task NextMonth()
+    {
+        currentMonth = currentMonth.AddMonths(1);
+        await LoadProjectionAsync();
+    }
+
+    private async Task SetMode(BudgetViewMode mode)
+    {
+        if (viewMode == mode)
+        {
+            return;
+        }
+
+        viewMode = mode;
+        await LoadProjectionAsync();
+    }
+
+    private decimal CategoryWidth(decimal amount)
+    {
+        var max = projection?.Categories.Count > 0
+            ? projection.Categories.Max(c => c.TotalAmount)
+            : 0m;
+
+        if (max <= 0m)
+        {
+            return 0m;
+        }
+
+        return Math.Clamp(Math.Round(amount / max * 100m, 0), 4m, 100m);
+    }
+
+    private static string Money(decimal value) => value.ToString("C", GermanCulture);
+
+    private static string FrequencyLabel(BudgetFrequency frequency) => frequency switch
+    {
+        BudgetFrequency.Monthly => "monatlich",
+        BudgetFrequency.Quarterly => "quartalsweise",
+        BudgetFrequency.Yearly => "jährlich",
+        BudgetFrequency.Once => "einmalig",
+        _ => frequency.ToString()
+    };
+}

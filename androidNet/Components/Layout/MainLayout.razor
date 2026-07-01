@@ -1,0 +1,43 @@
+@inherits LayoutComponentBase
+@implements IDisposable
+@inject AppLockService AppLock
+@inject NavigationManager Navigation
+
+@if (isReady)
+{
+    <main id="main-content" class="mobile-shell">
+        @Body
+    </main>
+}
+
+@code {
+    private bool isReady;
+
+    protected override async Task OnInitializedAsync()
+    {
+        AppLock.StateChanged += HandleLockChanged;
+        await AppLock.LoadAsync();
+        isReady = true;
+        EnforceLock();
+    }
+
+    private void HandleLockChanged()
+    {
+        _ = InvokeAsync(() =>
+        {
+            EnforceLock();
+            StateHasChanged();
+        });
+    }
+
+    private void EnforceLock()
+    {
+        var relative = Navigation.ToBaseRelativePath(Navigation.Uri);
+        if (AppLock.IsEnabled && !AppLock.IsUnlocked && !relative.StartsWith("unlock", StringComparison.Ordinal))
+        {
+            Navigation.NavigateTo("/unlock", replace: true);
+        }
+    }
+
+    public void Dispose() => AppLock.StateChanged -= HandleLockChanged;
+}

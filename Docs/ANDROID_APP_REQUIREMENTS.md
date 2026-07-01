@@ -1,219 +1,146 @@
 # BudgetPilot Android-App — Anforderungen & Vorgehen
 
-Status: Entwurf · Quelle der Wahrheit für die Android-Begleit-App, die mit einer
-selbst-gehosteten BudgetPilot-Instanz (.NET 8 / Blazor + ASP.NET Core Identity)
-kommuniziert. Code/Bezeichner Englisch, UI-Text & Specs Deutsch, Geld `decimal`,
-Geschäftsdaten als Datum (`dd.MM.yyyy`, Locale `de-DE`).
+Status: Zwei parallele Phase-1-Ansätze · Quelle der Wahrheit für die
+Android-Begleit-Apps, die mit einer selbst-gehosteten BudgetPilot-Instanz (.NET 8 /
+Blazor + ASP.NET Core Identity) kommunizieren. Code/Bezeichner Englisch,
+UI-Text & Specs Deutsch, Geld `decimal`, Geschäftsdaten als Datum (`dd.MM.yyyy`,
+Locale `de-DE`).
 
 ---
 
 ## 1. Ziel & Umfang
 
-Eine moderne, native Android-App, mit der ein angemeldeter Benutzer seine
-BudgetPilot-Instanz mobil bedient: Übersichten ansehen und Positionen/Versionen
-pflegen — auch unterwegs, möglichst auch offline-lesend. Die App ist ein **Client**;
-die fachliche Logik (Projektion, Versionierung) bleibt server­seitig.
+Es entstehen zwei bewusst getrennte Android-Phase-1-Ansätze, damit sie parallel
+bewertet werden können, ohne sich im selben Projektordner zu überschreiben:
 
-**Nicht-Ziele (vorerst):** kein eigener Server, keine lokale Budgetlogik, kein
-Mehr-Instanz-Sync, keine Zahlungsabwicklung/echtes Geld (wichtig für Google-Policy).
+- `android/` — Kotlin / Jetpack Compose Ansatz, aktuell von Claude Code betreut.
+- `androidNet/` — .NET MAUI Blazor Hybrid Ansatz, aktuell von Codex betreut.
 
----
+Beide Apps sind **Clients**. Fachliche Logik wie Projektion, Versionierung,
+Validierung und Audit bleibt serverseitig in Application/Domain bzw. hinter der
+bestehenden JSON-API. Die mobilen Apps rufen diese API auf und halten nur
+Client-Zustand wie Instanz-URL und Token lokal.
 
-## 2. Aktueller Stand (Backend) — was schon da ist / fehlt
-
-- ✅ ASP.NET Core Identity (`IdentityDbContext<IdentityUser>`), Cookie-Login für Web.
-- ✅ `AddIdentityCore<IdentityUser>().AddApiEndpoints()` ist verdrahtet (Grundlage
-  für Bearer-Token), Multi-User vorhanden, TLS via Caddy/Let's Encrypt.
-- ✅ Saubere Schichten: `Application`-Services + DTOs (`IBudgetItemService`,
-  `ICategoryService`, `IBudgetProjectionService`, `IAuditLog`) — die API kann dünn
-  darauf aufsetzen.
-- ❌ **Kein Token-Endpoint gemappt** (`MapIdentityApi` fehlt).
-- ❌ **Keine REST/JSON-API** für die Daten (bisher nur Blazor-Server-UI).
-- ❌ Bearer-Authentifizierungsschema nicht als Default für API-Routen aktiv.
-
-> Konsequenz: Der größte Arbeitsblock ist **serverseitig** (API + Token), nicht in
-> der App selbst. Dank vorhandener Services/DTOs ist die API aber dünn.
+**Nicht-Ziele für Phase 1:** keine eigene lokale Budgetlogik, kein Offline-Sync,
+kein eigener Server, keine Zahlungsabwicklung/echtes Geld.
 
 ---
 
-## 3. Backend-Voraussetzungen (BudgetPilot) — REQ-BE
+## 2. Technologieentscheidungen
 
-- **REQ-BE-1 Token-Endpoints.** `MapIdentityApi<IdentityUser>()` unter
-  `/api/auth` mappen (liefert `/login`, `/refresh`). Login gibt Access- **und**
-  Refresh-Token zurück; öffentliche Registrierung bleibt aus.
-- **REQ-BE-2 Bearer-Schema.** Data-API-Routen akzeptieren
-  `IdentityConstants.BearerScheme` zusätzlich zum Cookie; Web bleibt Cookie.
-- **REQ-BE-3 Versionierte JSON-API** unter `/api/v1`, geschützt mit
-  `RequireAuthorization()`. Endpunkte spiegeln die bestehenden Services 1:1:
-  - `GET  /api/v1/categories`
-  - `GET/POST/PUT  /api/v1/budget-items` (+ `…/{id}`)
-  - `POST /api/v1/budget-items/{id}/versions` (neue Version, auch rückwirkend)
-  - `PUT  /api/v1/budget-items/{id}/versions/{versionId}` (Korrektur)
-  - `POST /api/v1/budget-items/{id}/deactivate|reactivate`, `DELETE …/{id}`
-  - `GET  /api/v1/projections/monthly?year&month&mode`
-  - `GET  /api/v1/projections/yearly?year&mode`
-  - `GET  /api/v1/projections/multi-year?from&to&mode`
-  - `GET  /api/v1/audit?max=`
-  - (optional, Admin) `…/users`
-- **REQ-BE-4 Fehlerformat.** Einheitlich `ProblemDetails` (RFC 7807); fachliche
-  `DomainException` → `400` mit verständlicher Meldung (de-DE).
-- **REQ-BE-5 Serialisierung.** `System.Text.Json`, `decimal` als Zahl (nicht
-  String), Datum als ISO `yyyy-MM-dd`. Enums als String (`"Income"`, `"Monthly"`).
-- **REQ-BE-6 OpenAPI.** Swagger/OpenAPI-Dokument generieren → daraus kann der
-  Android-API-Client (Retrofit-Interfaces) erzeugt/geprüft werden.
-- **REQ-BE-7 Rate-Limiting & Logging** der API (Brute-Force-Schutz am
-  Login-Endpoint), Audit-Einträge wie im Web (Akteur = API-User).
-- **REQ-BE-8 CORS** nicht nötig für native App (kein Browser-Origin); falls später
-  eine PWA/Web-Client dazukommt, separat konfigurieren.
+### Kotlin-Ansatz (`android/`)
+
+- Kotlin, Jetpack Compose, Material 3.
+- Hilt, Retrofit/OkHttp, kotlinx.serialization.
+- Eigenständiges Gradle-Projekt; nicht Teil von `BudgetPilot.sln`.
+- In Android Studio den Ordner `android/` öffnen.
+
+### .NET-Ansatz (`androidNet/`)
+
+Für den .NET-Vergleich gilt:
+
+```text
+.NET MAUI Blazor Hybrid
+```
+
+Konkrete Ableitung:
+
+- Projektordner: `androidNet/`.
+- Projektdatei: `androidNet/BudgetPilot.Mobile.csproj`.
+- Target: `net8.0-android`, min-SDK 26.
+- UI: Blazor Hybrid im `BlazorWebView`.
+- Wiederverwendung: ProjectReference auf `BudgetPilot.Application` für DTOs und
+  transitiv `BudgetPilot.Domain` für Enums.
+- Keine Aufnahme in `BudgetPilot.sln`, damit `dotnet build` der Web-/Backend-
+  Lösung keine MAUI-/Android-Workload benötigt.
 
 ---
 
-## 4. Android Tech-Stack & Architektur — REQ-AND
+## 3. Backend-Voraussetzungen
 
-- **REQ-AND-1 Sprache/UI.** Kotlin + Jetpack Compose (Material 3). Min-SDK 26
-  (Android 8), Target-SDK aktuell (derzeit API 35).
-- **REQ-AND-2 Architektur.** Clean Architecture: `data` (API, DTOs, Repos,
-  Mapper), `domain` (Modelle, UseCases), `ui` (Compose + ViewModels). MVVM/MVI,
-  unidirektionaler Datenfluss, `StateFlow`.
-- **REQ-AND-3 DI.** Hilt.
-- **REQ-AND-4 Netzwerk.** Retrofit + OkHttp + `kotlinx.serialization`. Auth-
-  Interceptor hängt Bearer-Token an; Authenticator macht automatischen
-  Refresh bei `401`.
-- **REQ-AND-5 Async.** Coroutines + Flow.
-- **REQ-AND-6 Navigation.** Navigation-Compose, typisierte Routen.
-- **REQ-AND-7 Lokaler Cache.** Room für gelesene Projektionen/Positionen
-  (Offline-Lesen); Einstellungen via DataStore.
-- **REQ-AND-8 Lokalisierung.** de-DE: EUR-Formatierung, Datum `dd.MM.yyyy`,
-  Dezimal-Komma. (Bewusst spiegelbildlich zur Web-Konvention.)
-- **REQ-AND-9 Theming.** An den Web-Prototyp angelehnt (Plus Jakarta Sans,
-  Akzent `#C2410C`), Light/Dark.
-- **REQ-AND-10 Tests.** Unit (ViewModels/UseCases), API-Contract-Tests gegen
-  OpenAPI, einige Compose-UI-Tests.
+Der benötigte Backend-Stand ist vorhanden:
+
+- `/api/auth/login` und `/api/auth/refresh` liefern ASP.NET-Identity-Bearer-Token.
+- `/api/v1/...` ist versioniert, per Bearer geschützt und nutzt die vorhandenen
+  Application-Services/DTOs.
+- Enums werden als Strings serialisiert.
+- Fachliche `DomainException` wird als RFC-7807 `ProblemDetails` mit Status 400
+  ausgegeben.
+- Swagger/OpenAPI ist in Development unter `/swagger` verfügbar.
+
+Die Web-UI nutzt weiter Cookies; Android-Clients nutzen Bearer-Token.
 
 ---
 
-## 5. Authentifizierung & Sicherheit — REQ-SEC
+## 4. Gemeinsame Phase-1-Anforderungen
 
-- **REQ-SEC-1 Instanz-URL konfigurierbar.** Beim ersten Start gibt der Nutzer
-  seine Basis-URL ein (z. B. `https://budget.meine-domain.de`). Validierung +
-  Erreichbarkeitscheck.
-- **REQ-SEC-2 Login.** E-Mail/Passwort → `/api/auth/login` → Access/Refresh-Token.
-- **REQ-SEC-3 Token-Speicherung.** Refresh-Token in `EncryptedSharedPreferences`
-  bzw. Android Keystore; niemals im Klartext/Log.
-- **REQ-SEC-4 Auto-Refresh & Logout** bei abgelaufenem/ungültigem Token.
-- **REQ-SEC-5 TLS-Pflicht.** Nur HTTPS; Cleartext per Network-Security-Config
-  verboten. Let's-Encrypt-Zertifikate der Instanz sind regulär gültig → kein
-  Pinning nötig (optional als Härtung möglich).
-- **REQ-SEC-6 App-Lock (optional).** Biometrie/PIN beim Öffnen (Finanzdaten).
-- **REQ-SEC-7 Keine Secrets im Repo/Build.** Signing-Keys & Tokens außerhalb VCS.
-
----
-
-## 6. Funktionsumfang (MVP) — REQ-FEAT
-
-Spiegelt den Web-Funktionsumfang, mobil priorisiert:
-
-- **REQ-FEAT-1 Dashboard** (Monat/Jahr-Umschalter, KPIs, Kategorie-Balken).
-- **REQ-FEAT-2 Monats-/Jahres-/Mehrjahresübersicht** (Budget- & Cashflow-Sicht).
-- **REQ-FEAT-3 Positionen** anlegen, bearbeiten, deaktivieren/löschen.
-- **REQ-FEAT-4 Versionen** anlegen (auch rückwirkend) und **korrigieren** —
-  inkl. Monatsgrenzen-Logik serverseitig (App ruft nur die API).
-- **REQ-FEAT-5 Kategorien** verwalten.
-- **REQ-FEAT-6 Aktivitätsprotokoll** ansehen.
-- **REQ-FEAT-7 (später) Benutzerverwaltung** (Admin), **Push-Erinnerungen**.
+- **REQ-P1-1 Instanz-Setup.** Beim ersten Start gibt der Nutzer die Basis-URL ein.
+  HTTPS ist Pflicht; HTTP ist nur für lokale Emulator-Tests gegen `10.0.2.2` oder
+  `localhost` erlaubt.
+- **REQ-P1-2 Login.** E-Mail/Passwort gegen `/api/auth/login`; keine Registrierung
+  in der App.
+- **REQ-P1-3 Token-Speicherung.** Access-/Refresh-Token sicher speichern; keine
+  Tokens im Log.
+- **REQ-P1-4 Refresh.** Bei `401` `/api/auth/refresh` versuchen und den Request
+  wiederholen; bei Fehlschlag ausloggen.
+- **REQ-P1-5 Dashboard.** Monatsprojektion laden und anzeigen: Einnahmen,
+  Ausgaben, Saldo, Kategorie-Balken, Positionen.
+- **REQ-P1-6 Ansichtsmodus.** Budget-/Cashflow-Modus für die Monatsprojektion
+  umschaltbar.
+- **REQ-P1-7 Lokalisierung.** Deutsche UI-Texte, EUR-Formatierung und `de-DE`.
+- **REQ-P1-8 Theming.** An den Web-Prototyp angelehnt: Akzent `#C2410C`, ruhige
+  BudgetPilot-Farbwelt.
 
 ---
 
-## 7. Nicht-funktionale Anforderungen — REQ-NFR
+## 5. Sicherheit
 
-- Offline-Lesen der zuletzt geladenen Daten; klare Sync-/Fehlerzustände.
-- Schnelle Startzeit, sparsamer Datenverbrauch (ETags/Caching optional).
-- Barrierefreiheit (Schriftgrößen, Kontrast, TalkBack-Labels).
-- Stabilität: kein Crash bei Netzwerkfehlern; ProblemDetails verständlich anzeigen.
-- Versionierung der App analog Backend (SemVer), sichtbarer Build-Stand.
-
----
-
-## 8. Google Play — Konto, Beantragungen, Richtlinien, Prozess
-
-> Reihenfolge grob: Entwicklerkonto → Identitätsprüfung → App anlegen →
-> Pflichtangaben (Datenschutz/Data-Safety/Content-Rating) → (für neue
-> Privatkonten) geschlossener Test mit 12 Testern/14 Tage → Produktion.
-
-- **REQ-GP-1 Play-Entwicklerkonto.** Einmalige Gebühr **25 USD**. Wahl
-  **Privatperson** oder **Organisation**.
-- **REQ-GP-2 Identitätsprüfung (Pflicht).** Name, Adresse, E-Mail, Telefon;
-  ggf. Ausweis. **Organisation** benötigt eine **D-U-N-S-Nummer** (kostenlos
-  beantragbar, Bearbeitung kann Wochen dauern → früh starten).
-- **REQ-GP-3 Test-Pflicht für neue Privatkonten.** Neue Personal-Accounts müssen
-  vor dem Produktions-Launch einen **geschlossenen Test mit mind. 12 Testern, die
-  14 Tage durchgehend opted-in sind**, durchführen. → Tester (Familie/Freunde)
-  früh einplanen; ggf. Organisation wählen, falls das vermeidbar sein soll.
-- **REQ-GP-4 Datenschutzerklärung (URL Pflicht).** Besonders bei Finanz-/sensiblen
-  Daten. Muss erklären, dass Daten zur **eigenen, selbst-gehosteten Instanz**
-  des Nutzers gehen und die App selbst nichts sammelt.
-- **REQ-GP-5 Data-Safety-Formular.** Wahrheitsgemäß deklarieren (Finanzdaten,
-  Account-Daten; Übertragung verschlüsselt; keine Weitergabe an Dritte).
-- **REQ-GP-6 Content-Rating** (Fragebogen) ausfüllen.
-- **REQ-GP-7 Financial-Features-Deklaration.** BudgetPilot bewegt **kein echtes
-  Geld** (reine Haushaltsplanung) → die strengen Vorgaben für Kredit-/Zahlungs-
-  Apps greifen nicht; trotzdem als „Finanzen/Budget" einordnen.
-- **REQ-GP-8 Technik-Vorgaben.** Auslieferung als **Android App Bundle (.aab)**,
-  **Play App Signing** (Google verwaltet den Signing-Key, du lieferst Upload-Key),
-  aktuelles **Target-API-Level** (Play erzwingt jährlich ~aktuell-1).
-- **REQ-GP-9 Berechtigungen minimal.** Nur `INTERNET` (+ optional
-  `USE_BIOMETRIC`). Keine sensiblen Berechtigungen.
-- **REQ-GP-10 Store-Eintrag.** Icon, Feature-Grafik, Screenshots, Kurz-/
-  Langbeschreibung (de + en empfehlenswert).
-- **REQ-GP-11 (optional) Push.** Für Erinnerungen ein **Firebase-Projekt (FCM)**
-  anlegen (separat, kostenfreier Tier). Erfordert Backend-Integration.
-
-### Alternative ohne Google Play
-Da BudgetPilot privat/Haushalt ist, ist auch **Sideload** möglich (signiertes APK
-direkt verteilen) oder Distribution über **F-Droid/eigener Kanal** — dann entfällt
-das gesamte Play-Prozedere (Konto, Gebühr, Test-Pflicht, Data-Safety). Nachteil:
-keine automatischen Updates über den Store, manuelles Vertrauen für „unbekannte
-Quellen". **Empfehlung:** Wenn nur Familie/eigene Nutzung → Sideload reicht oft;
-wenn öffentliche Verfügbarkeit gewünscht → Play.
+- Produktiv nur HTTPS-Instanzen verwenden.
+- Cleartext nur für lokale Emulator-Hosts freigeben.
+- Refresh-Token nicht in Klartextdateien speichern.
+- Keine sensiblen Android-Berechtigungen; Phase 1 braucht nur `INTERNET`.
+- App-Lock/Biometrie ist eine spätere Härtung.
 
 ---
 
-## 9. Vorgehen / Phasen
+## 6. Build-Hinweise
 
-1. **P0 — Backend-API (Voraussetzung).** Token-Endpoints + Bearer-Schema +
-   `/api/v1`-Endpunkte auf bestehende Services, OpenAPI, ProblemDetails,
-   Rate-Limit. *Ohne das kann die App nichts.*
-2. **P1 — App-Grundgerüst.** Projekt, Hilt, Retrofit/OkHttp, Instanz-URL-Setup,
-   Login + Token-Refresh + sichere Speicherung.
-3. **P2 — Lesepfad.** Dashboard + Übersichten (online), dann Room-Offline-Cache.
-4. **P3 — Schreibpfad.** Positionen/Versionen anlegen/korrigieren, Kategorien.
-5. **P4 — Feinschliff.** Theming, App-Lock, Aktivitätsprotokoll, i18n, Tests.
-6. **P5 — Release.** Sideload: signiertes APK bauen & verteilen (sofort nutzbar).
-   Parallel **früh** den Play-Vorlauf starten (Konto, Identitätsprüfung,
-   ggf. D-U-N-S, geschlossener 12-Tester-Test), damit ein späterer Play-Launch
-   nicht an Wartezeiten hängt.
+Kotlin-Ansatz:
 
-> Schreiben ist im MVP enthalten (Entscheidung §10). Offline-**Schreiben** mit
-> Sync ist eine spätere Ausbaustufe; im MVP erfolgt Schreiben online, Lesen auch
-> aus dem Room-Cache.
+```bash
+cd android
+# In Android Studio öffnen oder per Gradle bauen, sobald Wrapper/SDK verfügbar sind.
+```
+
+.NET-MAUI-Ansatz:
+
+```bash
+cd androidNet
+dotnet workload restore
+dotnet build BudgetPilot.Mobile.csproj -f net8.0-android
+```
+
+Beide Android-Projekte bleiben außerhalb von `BudgetPilot.sln` und werden nicht
+vom normalen .NET/Docker-CI-Build erzwungen.
 
 ---
 
-## 10. Getroffene Entscheidungen
+## 7. Phasenplan
 
-- ✅ **Distribution: Beides — Sideload jetzt, Play später.** Entwicklung & Nutzung
-  starten per signiertem APK (kein Google-Overhead). Der Play-Vorlauf
-  (Konto, Identitätsprüfung, ggf. D-U-N-S, 12-Tester-Phase) wird **parallel früh**
-  angestoßen, da diese Schritte Wochen brauchen.
-- ✅ **MVP-Umfang: Lesen + Schreiben von Anfang an.** Übersichten **und** Pflege
-  von Positionen/Versionen (inkl. rückwirkender Korrektur) und Kategorien.
-- ✅ **Repo-Struktur: Monorepo.** Android-Code im Ordner `android/` desselben
-  Repos; gemeinsamer OpenAPI-Vertrag und Versionierung an einem Ort. Gradle-Build
-  getrennt vom .NET-Build (CI-Workflows separat triggern: `.github/workflows`).
-
-### Noch offen (später entscheidbar)
-- **Konto-Typ bei Play:** Privatperson (→ 12-Tester-Pflicht) vs. Organisation
-  (→ D-U-N-S). Vor der Play-Einreichung festlegen.
-- **Offline-Tiefe beim Schreiben:** zunächst Schreiben nur online (Lesen aus
-  Cache offline); Offline-Schreiben mit späterem Sync ist eine spätere Ausbaustufe.
-- **Push-Erinnerungen (FCM):** nach dem MVP.
+1. **P0 — Backend-API.** Erledigt: Token-Endpoints, Bearer-geschützte `/api/v1`,
+   ProblemDetails, OpenAPI.
+2. **P1 — App-Grundgerüste vergleichen.** Kotlin in `android/`, .NET MAUI in
+   `androidNet/`: Setup, Login, Token-Refresh, Dashboard-Lesepfad.
+3. **P2 — Lesepfade erweitern.** Im `androidNet/`-Track erledigt:
+   Monats-/Jahres-/Mehrjahresübersicht, Positionen, Kategorien und
+   Aktivitätsprotokoll.
+4. **P3 — Schreibpfad.** Im `androidNet/`-Track erledigt:
+   Positionen/Versionen anlegen und korrigieren, Status ändern/löschen sowie
+   Kategorien anlegen, umbenennen und deaktivieren.
+5. **P4 — Mobilreife.** Im `androidNet/`-Track erledigt: Offline-Lese-Cache,
+   optionale lokale PIN-Sperre mit Android-Biometrie und PIN-Fallback,
+   vollständiger Settings-Bereich, robuste Fehlerzustände, Accessibility-Basis
+   und automatisierte Tests für lokale Eingaberegeln.
+6. **P5 — Release.** Release-Skript für signiertes APK und AAB vorhanden.
+   Extern erforderlich bleiben ein privater Keystore und gegebenenfalls der
+   Play-Store-Zugang.

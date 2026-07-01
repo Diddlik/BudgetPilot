@@ -1,0 +1,136 @@
+@page "/activity"
+@inject AppSession Session
+@inject BudgetPilotApiClient Api
+@inject NavigationManager Navigation
+
+<section class="dashboard-screen">
+    <header class="topbar">
+        <div>
+            <p class="eyebrow">Änderungsprotokoll</p>
+            <h1>Aktivität</h1>
+            <span>Die letzten Änderungen deiner Instanz</span>
+        </div>
+        <div class="year-stepper">
+            <a class="icon-button icon-link" href="/settings" aria-label="App-Sperre einstellen" title="App-Sperre">⚙</a>
+            <button class="icon-button" aria-label="Neu laden" title="Neu laden" @onclick="LoadAsync" disabled="@isLoading">↻</button>
+        </div>
+    </header>
+    <OfflineNotice />
+
+    @if (!string.IsNullOrWhiteSpace(error))
+    {
+        <div class="alert">
+            <span>@error</span>
+            <button class="text-button" @onclick="LoadAsync">Erneut versuchen</button>
+        </div>
+    }
+    else if (isLoading)
+    {
+        <div class="panel loading-panel">Lade Aktivitäten...</div>
+    }
+    else if (entries.Count == 0)
+    {
+        <div class="panel empty-state">Noch keine Änderungen protokolliert.</div>
+    }
+    else
+    {
+        <div class="summary-row">
+            <span>@entries.Count Einträge</span>
+            <span>Neueste zuerst</span>
+        </div>
+
+        <section class="activity-list">
+            @foreach (var entry in entries.OrderByDescending(e => e.TimestampUtc))
+            {
+                <article class="activity-card">
+                    <div class="activity-marker @ActionClass(entry.Action)" aria-hidden="true"></div>
+                    <div class="activity-copy">
+                        <div>
+                            <span class="pill @ActionClass(entry.Action)">@ActionLabel(entry.Action)</span>
+                            <time datetime="@entry.TimestampUtc.ToString("O")">@LocalTimestamp(entry.TimestampUtc)</time>
+                        </div>
+                        <strong>@EntityLabel(entry.EntityType) „@entry.EntityName“</strong>
+                        @if (!string.IsNullOrWhiteSpace(entry.Details))
+                        {
+                            <p>@entry.Details</p>
+                        }
+                        <small>@entry.UserName</small>
+                    </div>
+                </article>
+            }
+        </section>
+    }
+
+    <AppNavigation />
+</section>
+
+@code {
+    private static readonly CultureInfo GermanCulture = CultureInfo.GetCultureInfo("de-DE");
+    private List<AuditEntryDto> entries = [];
+    private bool isLoading = true;
+    private string? error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Session.LoadAsync();
+        if (!Session.IsSignedIn)
+        {
+            Navigation.NavigateTo("/", replace: true);
+            return;
+        }
+
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        error = null;
+        isLoading = true;
+        try
+        {
+            entries = await Api.GetAuditEntriesAsync();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            await Session.ClearAsync();
+            Navigation.NavigateTo("/", replace: true);
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private static string LocalTimestamp(DateTime timestampUtc) =>
+        timestampUtc.ToLocalTime().ToString("dd.MM.yyyy · HH:mm", GermanCulture);
+
+    private static string ActionLabel(AuditAction action) => action switch
+    {
+        AuditAction.Created => "angelegt",
+        AuditAction.Updated => "geändert",
+        AuditAction.VersionAdded => "neue Version",
+        AuditAction.Deactivated => "deaktiviert",
+        AuditAction.Reactivated => "reaktiviert",
+        AuditAction.Deleted => "gelöscht",
+        _ => action.ToString()
+    };
+
+    private static string EntityLabel(string entityType) => entityType switch
+    {
+        "BudgetItem" => "Position",
+        "Category" => "Kategorie",
+        "User" => "Benutzer",
+        _ => entityType
+    };
+
+    private static string ActionClass(AuditAction action) => action switch
+    {
+        AuditAction.Created or AuditAction.VersionAdded or AuditAction.Reactivated => "positive",
+        AuditAction.Deleted or AuditAction.Deactivated => "negative",
+        _ => "neutral"
+    };
+}

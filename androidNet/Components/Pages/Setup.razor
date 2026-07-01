@@ -1,0 +1,109 @@
+@page "/"
+@inject AppSession Session
+@inject BudgetPilotApiClient Api
+@inject MobilePreferences Preferences
+@inject NavigationManager Navigation
+
+<section class="auth-screen login-screen">
+    <div class="brand-row login-brand">
+        <div class="brand-mark" aria-hidden="true">B</div>
+        <div>
+            <strong>BudgetPilot</strong>
+            <span>Dein Haushalt. Klar geplant.</span>
+        </div>
+    </div>
+
+    <div class="hero-copy login-hero">
+        <p class="eyebrow">Willkommen zurück</p>
+        <h1>Dein Budget.<br /><span>Sicher verbunden.</span></h1>
+        <p>Melde dich bei deiner persönlichen BudgetPilot-Instanz an.</p>
+    </div>
+
+    <form class="panel auth-panel login-panel" @onsubmit="LoginAsync" @onsubmit:preventDefault="true">
+        <div class="login-panel-heading">
+            <h2>Anmelden</h2>
+            <span>Geschützte Verbindung</span>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(error))
+        {
+            <div class="alert" role="alert">@error</div>
+        }
+
+        <label>
+            Instanz-URL
+            <input class="field" type="url" inputmode="url" autocomplete="url"
+                   placeholder="https://budget.example.de" required @bind="baseUrl" />
+        </label>
+
+        <label>
+            E-Mail
+            <input class="field" type="email" inputmode="email" autocomplete="username"
+                   placeholder="name@example.de" required @bind="email" />
+        </label>
+
+        <label>
+            Passwort
+            <input class="field" type="password" autocomplete="current-password"
+                   placeholder="Dein Passwort" required @bind="password" />
+        </label>
+
+        <button class="button primary login-submit" type="submit" disabled="@isBusy">
+            @(isBusy ? "Anmeldung läuft..." : "Sicher anmelden")
+        </button>
+
+        <p class="login-security">
+            <span aria-hidden="true">◆</span>
+            Zugangsdaten und Token bleiben geschützt auf deinem Gerät.
+        </p>
+    </form>
+</section>
+
+@code {
+    private string baseUrl = string.Empty;
+    private string email = string.Empty;
+    private string password = string.Empty;
+    private string? error;
+    private bool isBusy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Session.LoadAsync();
+
+        if (!string.IsNullOrWhiteSpace(Session.BaseUrl))
+        {
+            baseUrl = Session.BaseUrl;
+        }
+
+        if (Session.IsSignedIn)
+        {
+            Navigation.NavigateTo(Preferences.StartRoute, replace: true);
+        }
+    }
+
+    private async Task LoginAsync()
+    {
+        if (isBusy)
+        {
+            return;
+        }
+
+        error = null;
+        isBusy = true;
+
+        try
+        {
+            await Session.SetBaseUrlAsync(baseUrl);
+            await Api.LoginAsync(email, password);
+            Navigation.NavigateTo(Preferences.StartRoute, replace: true);
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            isBusy = false;
+        }
+    }
+}

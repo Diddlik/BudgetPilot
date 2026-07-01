@@ -1,0 +1,136 @@
+@page "/budget-items"
+@inject AppSession Session
+@inject BudgetPilotApiClient Api
+@inject NavigationManager Navigation
+
+<section class="dashboard-screen">
+    <header class="topbar">
+        <div>
+            <p class="eyebrow">Budget</p>
+            <h1>Positionen</h1>
+            <span>Alle Einnahmen und Ausgaben</span>
+        </div>
+        <a class="icon-button icon-link" aria-label="Neue Budgetposition" title="Neue Budgetposition"
+           href="/budget-items/new">+</a>
+    </header>
+    <OfflineNotice />
+
+    <div class="segmented list-filter" role="group" aria-label="Positionen filtern">
+        <button class="@(!showInactive ? "active" : null)" @onclick="() => SetFilter(false)">Aktiv</button>
+        <button class="@(showInactive ? "active" : null)" @onclick="() => SetFilter(true)">Alle</button>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(error))
+    {
+        <div class="alert">
+            <span>@error</span>
+            <button class="text-button" @onclick="LoadAsync">Erneut versuchen</button>
+        </div>
+    }
+    else if (isLoading)
+    {
+        <div class="panel loading-panel">Lade Budgetpositionen...</div>
+    }
+    else if (VisibleItems.Count == 0)
+    {
+        <div class="panel empty-state">Keine passenden Budgetpositionen vorhanden.</div>
+    }
+    else
+    {
+        <div class="summary-row">
+            <span>@VisibleItems.Count Positionen</span>
+            <span>@VisibleItems.Count(i => i.Type == BudgetItemType.Income) Einnahmen · @VisibleItems.Count(i => i.Type == BudgetItemType.Expense) Ausgaben</span>
+        </div>
+
+        <section class="panel item-cards">
+            @foreach (var item in VisibleItems.OrderBy(i => i.Type).ThenBy(i => i.CategoryName).ThenBy(i => i.Name))
+            {
+                var version = item.Versions.FirstOrDefault(v => v.IsCurrent) ?? item.Versions.FirstOrDefault();
+                <a class="entity-row entity-link" href="/budget-items/@item.Id">
+                    <div class="entity-icon @(item.Type == BudgetItemType.Income ? "income" : "expense")">
+                        @(item.Type == BudgetItemType.Income ? "+" : "−")
+                    </div>
+                    <div class="entity-copy">
+                        <strong>@item.Name</strong>
+                        <span>@item.CategoryName@(string.IsNullOrWhiteSpace(item.Owner) ? null : $" · {item.Owner}")</span>
+                        @if (version is not null)
+                        {
+                            <small>@FrequencyLabel(version.Frequency) · seit @version.ValidFrom.ToString("dd.MM.yyyy", GermanCulture)</small>
+                        }
+                    </div>
+                    <div class="entity-value">
+                        @if (version is not null)
+                        {
+                            <strong class="@(item.Type == BudgetItemType.Income ? "text-positive" : null)">@Money(version.Amount)</strong>
+                        }
+                        @if (!item.IsActive)
+                        {
+                            <span class="pill neutral">inaktiv</span>
+                        }
+                    </div>
+                </a>
+            }
+        </section>
+    }
+
+    <AppNavigation />
+</section>
+
+@code {
+    private static readonly CultureInfo GermanCulture = CultureInfo.GetCultureInfo("de-DE");
+    private List<BudgetItemDto> items = [];
+    private bool showInactive;
+    private bool isLoading = true;
+    private string? error;
+
+    private List<BudgetItemDto> VisibleItems =>
+        showInactive ? items : items.Where(i => i.IsActive).ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Session.LoadAsync();
+        if (!Session.IsSignedIn)
+        {
+            Navigation.NavigateTo("/", replace: true);
+            return;
+        }
+
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        error = null;
+        isLoading = true;
+        try
+        {
+            items = await Api.GetBudgetItemsAsync();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            await Session.ClearAsync();
+            Navigation.NavigateTo("/", replace: true);
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void SetFilter(bool includeInactive) => showInactive = includeInactive;
+
+    private static string Money(decimal value) => value.ToString("C", GermanCulture);
+
+    private static string FrequencyLabel(BudgetFrequency frequency) => frequency switch
+    {
+        BudgetFrequency.Monthly => "monatlich",
+        BudgetFrequency.Quarterly => "quartalsweise",
+        BudgetFrequency.Yearly => "jährlich",
+        BudgetFrequency.Once => "einmalig",
+        _ => frequency.ToString()
+    };
+}

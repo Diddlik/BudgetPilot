@@ -1,0 +1,385 @@
+@page "/budget-items/new"
+@page "/budget-items/{Id:guid}"
+@inject AppSession Session
+@inject BudgetPilotApiClient Api
+@inject NavigationManager Navigation
+
+<section class="dashboard-screen">
+    <header class="topbar">
+        <div>
+            <p class="eyebrow">@(IsNew ? "Neue Position" : "Budgetposition")</p>
+            <h1>@(IsNew ? "Position anlegen" : item?.Name ?? "Position")</h1>
+            <span>@(IsNew ? "Stammdaten und erste Version" : item?.CategoryName)</span>
+        </div>
+        <a class="icon-button icon-link" href="/budget-items" aria-label="Zurück zu Positionen">×</a>
+    </header>
+
+    @if (!string.IsNullOrWhiteSpace(error))
+    {
+        <div class="alert" role="alert">@error</div>
+    }
+    @if (!string.IsNullOrWhiteSpace(success))
+    {
+        <div class="success-message" role="status">@success</div>
+    }
+
+    @if (isLoading)
+    {
+        <div class="panel loading-panel">Lade Position...</div>
+    }
+    else
+    {
+        <form class="panel editor-form" @onsubmit="SaveMetadataAsync" @onsubmit:preventDefault="true">
+            <div class="panel-header">
+                <h2>@(IsNew ? "Grunddaten" : "Stammdaten")</h2>
+                @if (!IsNew && item is not null)
+                {
+                    <span class="pill @(item.IsActive ? "positive" : "negative")">
+                        @(item.IsActive ? "aktiv" : "inaktiv")
+                    </span>
+                }
+            </div>
+
+            <label>
+                Name
+                <input class="field" required maxlength="160" autocomplete="off" @bind="name" />
+            </label>
+            <label>
+                Beschreibung
+                <textarea class="field textarea" rows="3" maxlength="1000" @bind="description"></textarea>
+            </label>
+            <div class="form-grid">
+                <label>
+                    Typ
+                    <select class="field" @bind="type">
+                        <option value="@BudgetItemType.Income">Einnahme</option>
+                        <option value="@BudgetItemType.Expense">Ausgabe</option>
+                    </select>
+                </label>
+                <label>
+                    Kategorie
+                    <select class="field" required @bind="categoryId">
+                        <option value="@Guid.Empty">Bitte wählen</option>
+                        @foreach (var category in categories.Where(c => c.IsActive || c.Id == categoryId).OrderBy(c => c.Name))
+                        {
+                            <option value="@category.Id">@category.Name</option>
+                        }
+                    </select>
+                </label>
+            </div>
+            <label>
+                Zuständig (optional)
+                <input class="field" maxlength="120" autocomplete="off" @bind="owner" />
+            </label>
+
+            @if (IsNew)
+            {
+                <VersionFields Model="versionForm" />
+            }
+
+            <div class="form-actions">
+                <a class="button secondary button-link" href="/budget-items">Abbrechen</a>
+                <button class="button primary" type="submit" disabled="@isSaving">
+                    @(isSaving ? "Speichert..." : IsNew ? "Position anlegen" : "Stammdaten speichern")
+                </button>
+            </div>
+        </form>
+
+        @if (!IsNew && item is not null)
+        {
+            <section class="panel">
+                <div class="panel-header">
+                    <div>
+                        <h2>Versionen</h2>
+                        <p class="hint compact">Finanzielle Änderungen bleiben historisch nachvollziehbar.</p>
+                    </div>
+                    <button class="small-action" @onclick="StartNewVersion">Neue Version</button>
+                </div>
+
+                @if (showVersionForm)
+                {
+                    <form class="nested-form" @onsubmit="SaveVersionAsync" @onsubmit:preventDefault="true">
+                        <h3>@(editingVersionId is null ? "Neue Version ab Stichtag" : "Version korrigieren")</h3>
+                        <VersionFields Model="versionForm" />
+                        <div class="form-actions">
+                            <button class="button secondary" type="button" @onclick="CancelVersion">Abbrechen</button>
+                            <button class="button primary" type="submit" disabled="@isSaving">Version speichern</button>
+                        </div>
+                    </form>
+                }
+
+                <div class="version-list">
+                    @foreach (var version in item.Versions.OrderByDescending(v => v.ValidFrom))
+                    {
+                        <article class="version-card">
+                            <div>
+                                <strong>@Money(version.Amount)</strong>
+                                <span>@FrequencyLabel(version.Frequency)</span>
+                                <small>@ValidityLabel(version)</small>
+                            </div>
+                            <div class="row-actions">
+                                @if (version.IsCurrent)
+                                {
+                                    <span class="pill positive">aktuell</span>
+                                }
+                                <button class="small-action" @onclick="() => StartCorrection(version)">Korrigieren</button>
+                            </div>
+                        </article>
+                    }
+                </div>
+            </section>
+
+            <section class="panel danger-zone">
+                <h2>Positionsstatus</h2>
+                <p class="hint compact">Deaktivieren bewahrt die Historie. Löschen entfernt die Position endgültig.</p>
+                <div class="form-actions">
+                    <button class="button secondary" disabled="@isSaving" @onclick="ToggleActiveAsync">
+                        @(item.IsActive ? "Deaktivieren" : "Reaktivieren")
+                    </button>
+                    @if (!confirmDelete)
+                    {
+                        <button class="button danger" @onclick="() => confirmDelete = true">Löschen</button>
+                    }
+                    else
+                    {
+                        <button class="button danger" disabled="@isSaving" @onclick="DeleteAsync">Wirklich löschen</button>
+                        <button class="text-button" @onclick="() => confirmDelete = false">Abbrechen</button>
+                    }
+                </div>
+            </section>
+        }
+    }
+</section>
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private static readonly CultureInfo GermanCulture = CultureInfo.GetCultureInfo("de-DE");
+    private readonly VersionFormModel versionForm = new();
+    private List<CategoryDto> categories = [];
+    private BudgetItemDto? item;
+    private string name = string.Empty;
+    private string? description;
+    private string? owner;
+    private BudgetItemType type = BudgetItemType.Expense;
+    private Guid categoryId;
+    private bool isLoading = true;
+    private bool isSaving;
+    private bool showVersionForm;
+    private bool confirmDelete;
+    private Guid? editingVersionId;
+    private string? error;
+    private string? success;
+
+    private bool IsNew => Id == Guid.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Session.LoadAsync();
+        if (!Session.IsSignedIn)
+        {
+            Navigation.NavigateTo("/", replace: true);
+            return;
+        }
+
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        isLoading = true;
+        error = null;
+        try
+        {
+            categories = await Api.GetCategoriesAsync();
+            if (!IsNew)
+            {
+                item = await Api.GetBudgetItemAsync(Id);
+                name = item.Name;
+                description = item.Description;
+                owner = item.Owner;
+                type = item.Type;
+                categoryId = item.CategoryId;
+            }
+        }
+        catch (UnauthorizedAccessException)
+        {
+            await Session.ClearAsync();
+            Navigation.NavigateTo("/", replace: true);
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task SaveMetadataAsync()
+    {
+        if (!ValidateMetadata() || isSaving)
+        {
+            return;
+        }
+
+        await SaveAsync(async () =>
+        {
+            if (IsNew)
+            {
+                ValidateVersion();
+                var created = await Api.CreateBudgetItemAsync(new CreateBudgetItemRequest(
+                    name.Trim(), EmptyToNull(description), type, categoryId, versionForm.Amount,
+                    versionForm.Frequency, versionForm.ValidFrom, versionForm.PaymentDay,
+                    versionForm.PaymentMonth, EmptyToNull(versionForm.Note), EmptyToNull(owner)));
+                Navigation.NavigateTo($"/budget-items/{created.Id}", replace: true);
+                return;
+            }
+
+            item = await Api.UpdateBudgetItemAsync(Id, new UpdateBudgetItemMetadataRequest(
+                name.Trim(), EmptyToNull(description), type, categoryId, EmptyToNull(owner)));
+            success = "Stammdaten gespeichert.";
+        });
+    }
+
+    private void StartNewVersion()
+    {
+        editingVersionId = null;
+        versionForm.Reset(DateOnly.FromDateTime(DateTime.Today));
+        showVersionForm = true;
+        success = null;
+    }
+
+    private void StartCorrection(BudgetItemVersionDto version)
+    {
+        editingVersionId = version.Id;
+        versionForm.Load(version);
+        showVersionForm = true;
+        success = null;
+    }
+
+    private void CancelVersion()
+    {
+        showVersionForm = false;
+        editingVersionId = null;
+    }
+
+    private async Task SaveVersionAsync()
+    {
+        try
+        {
+            ValidateVersion();
+        }
+        catch (InvalidOperationException ex)
+        {
+            error = ex.Message;
+            return;
+        }
+
+        await SaveAsync(async () =>
+        {
+            if (editingVersionId is { } versionId)
+            {
+                await Api.UpdateBudgetItemVersionAsync(Id, versionId, new UpdateVersionRequest(
+                    versionForm.Amount, versionForm.Frequency, versionForm.ValidFrom,
+                    versionForm.PaymentDay, versionForm.PaymentMonth, EmptyToNull(versionForm.Note)));
+            }
+            else
+            {
+                await Api.AddBudgetItemVersionAsync(Id, new CreateBudgetItemVersionRequest(
+                    versionForm.Amount, versionForm.Frequency, versionForm.ValidFrom,
+                    versionForm.PaymentDay, versionForm.PaymentMonth, EmptyToNull(versionForm.Note)));
+            }
+
+            await LoadAsync();
+            showVersionForm = false;
+            editingVersionId = null;
+            success = "Version gespeichert.";
+        });
+    }
+
+    private async Task ToggleActiveAsync()
+    {
+        if (item is null)
+        {
+            return;
+        }
+
+        await SaveAsync(async () =>
+        {
+            await Api.SetBudgetItemActiveAsync(Id, !item.IsActive);
+            await LoadAsync();
+            success = item?.IsActive == true ? "Position reaktiviert." : "Position deaktiviert.";
+        });
+    }
+
+    private async Task DeleteAsync()
+    {
+        await SaveAsync(async () =>
+        {
+            await Api.DeleteBudgetItemAsync(Id);
+            Navigation.NavigateTo("/budget-items", replace: true);
+        });
+    }
+
+    private async Task SaveAsync(Func<Task> action)
+    {
+        error = null;
+        success = null;
+        isSaving = true;
+        try
+        {
+            await action();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            await Session.ClearAsync();
+            Navigation.NavigateTo("/", replace: true);
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private bool ValidateMetadata()
+    {
+        try
+        {
+            BudgetItemInputValidator.ValidateMetadata(name, categoryId);
+            error = null;
+            return true;
+        }
+        catch (InvalidOperationException ex)
+        {
+            error = ex.Message;
+            return false;
+        }
+    }
+
+    private void ValidateVersion() => BudgetItemInputValidator.ValidateVersion(versionForm);
+
+    private static string? EmptyToNull(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static string Money(decimal value) => value.ToString("C", GermanCulture);
+
+    private static string ValidityLabel(BudgetItemVersionDto version) =>
+        version.ValidTo is null
+            ? $"seit {version.ValidFrom:dd.MM.yyyy}"
+            : $"{version.ValidFrom:dd.MM.yyyy} – {version.ValidTo:dd.MM.yyyy}";
+
+    private static string FrequencyLabel(BudgetFrequency frequency) => frequency switch
+    {
+        BudgetFrequency.Monthly => "monatlich",
+        BudgetFrequency.Quarterly => "quartalsweise",
+        BudgetFrequency.Yearly => "jährlich",
+        BudgetFrequency.Once => "einmalig",
+        _ => frequency.ToString()
+    };
+}

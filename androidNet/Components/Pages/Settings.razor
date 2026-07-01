@@ -1,0 +1,246 @@
+@page "/settings"
+@inject AppLockService AppLock
+@inject BiometricAuthenticationService Biometrics
+@inject MobilePreferences MobilePreferences
+@inject AppSession Session
+@inject OfflineCache Cache
+@inject NavigationManager Navigation
+
+<section class="dashboard-screen settings-screen">
+    <header class="topbar">
+        <div>
+            <p class="eyebrow">BudgetPilot</p>
+            <h1>Einstellungen</h1>
+            <span>Sicherheit, Verbindung und App-Verhalten</span>
+        </div>
+        <a class="icon-button icon-link" href="/activity" aria-label="Einstellungen schließen">×</a>
+    </header>
+
+    @if (!string.IsNullOrWhiteSpace(error))
+    {
+        <div class="alert" role="alert">@error</div>
+    }
+    @if (!string.IsNullOrWhiteSpace(success))
+    {
+        <div class="success-message" role="status">@success</div>
+    }
+
+    <section class="settings-group" aria-labelledby="account-heading">
+        <div class="settings-heading"><span class="settings-symbol" aria-hidden="true">●</span><div><h2 id="account-heading">Konto</h2><p>Aktuelle Sitzung dieser BudgetPilot-Instanz</p></div></div>
+        <div class="settings-card">
+            <div class="setting-row"><div><strong>@(Session.AccountEmail ?? "Angemeldetes Konto")</strong><span>@Session.BaseUrl</span></div><span class="pill positive">verbunden</span></div>
+            <a class="settings-action" href="/activity"><span>Änderungsprotokoll öffnen</span><b aria-hidden="true">›</b></a>
+            <button class="settings-action danger-text" @onclick="LogoutAsync"><span>Abmelden</span><b aria-hidden="true">›</b></button>
+        </div>
+    </section>
+
+    <section class="settings-group" aria-labelledby="security-heading">
+        <div class="settings-heading"><span class="settings-symbol secure" aria-hidden="true">◆</span><div><h2 id="security-heading">Sicherheit</h2><p>Lokaler Schutz deiner Finanzdaten</p></div></div>
+        <div class="settings-card">
+            <div class="setting-row">
+                <div><strong>App-PIN</strong><span>4–8 Ziffern, sicher abgeleitet gespeichert</span></div>
+                <span class="pill @(AppLock.IsEnabled ? "positive" : "neutral")">@(AppLock.IsEnabled ? "aktiv" : "aus")</span>
+            </div>
+            <form class="settings-form" @onsubmit="SavePinAsync" @onsubmit:preventDefault="true">
+                <div class="form-grid">
+                    <label>@(AppLock.IsEnabled ? "Neue PIN" : "App-PIN")<input class="field pin-field" type="password" inputmode="numeric" autocomplete="new-password" minlength="4" maxlength="8" required @bind="pin" /></label>
+                    <label>PIN wiederholen<input class="field pin-field" type="password" inputmode="numeric" autocomplete="new-password" minlength="4" maxlength="8" required @bind="confirmation" /></label>
+                </div>
+                <div class="form-actions">
+                    @if (AppLock.IsEnabled)
+                    {
+                        <button class="button secondary" type="button" @onclick="DisableLockAsync">PIN-Schutz ausschalten</button>
+                    }
+                    <button class="button primary" type="submit">PIN speichern</button>
+                </div>
+            </form>
+            <div class="setting-row divided">
+                <div><strong>Biometrisch entsperren</strong><span>@BiometricAvailabilityLabel</span></div>
+                <button class="toggle @(Biometrics.IsEnabled ? "on" : null)" role="switch" aria-checked="@Biometrics.IsEnabled"
+                        aria-label="Biometrisches Entsperren"
+                        disabled="@(biometricBusy || (!Biometrics.IsEnabled && biometricAvailability != BiometricAvailability.Available))"
+                        @onclick="ToggleBiometricsAsync"><span></span></button>
+            </div>
+            @if (AppLock.IsEnabled)
+            {
+                <button class="settings-action" @onclick="LockNow"><span>App jetzt sperren</span><b aria-hidden="true">›</b></button>
+            }
+        </div>
+    </section>
+
+    <section class="settings-group" aria-labelledby="display-heading">
+        <div class="settings-heading"><span class="settings-symbol" aria-hidden="true">◫</span><div><h2 id="display-heading">Darstellung</h2><p>Startansicht und Standardberechnung</p></div></div>
+        <div class="settings-card settings-form">
+            <label>Startseite nach Anmeldung<select class="field" @bind="startPage" @bind:after="SavePreferences"><option value="@MobileStartPage.Month">Monatsübersicht</option><option value="@MobileStartPage.Year">Jahresübersicht</option></select></label>
+            <label>Standardansicht<select class="field" @bind="defaultViewMode" @bind:after="SavePreferences"><option value="@BudgetViewMode.Budget">Budget</option><option value="@BudgetViewMode.Cashflow">Cashflow</option></select></label>
+        </div>
+    </section>
+
+    <section class="settings-group" aria-labelledby="connection-heading">
+        <div class="settings-heading"><span class="settings-symbol" aria-hidden="true">◎</span><div><h2 id="connection-heading">Verbindung</h2><p>Selbst gehostete BudgetPilot-Instanz</p></div></div>
+        <form class="settings-card settings-form" @onsubmit="SaveInstanceAsync" @onsubmit:preventDefault="true">
+            <label>Instanz-URL<input class="field" type="url" inputmode="url" required @bind="baseUrl" /></label>
+            <p class="hint compact">Eine Änderung meldet dich ab, weil Bearer-Token immer zur aktuellen Instanz gehören.</p>
+            <div class="form-actions"><button class="button primary" type="submit">Instanz wechseln</button></div>
+        </form>
+    </section>
+
+    <section class="settings-group" aria-labelledby="storage-heading">
+        <div class="settings-heading"><span class="settings-symbol" aria-hidden="true">▤</span><div><h2 id="storage-heading">Offline-Daten</h2><p>Zuletzt geladene Ansichten auf diesem Gerät</p></div></div>
+        <div class="settings-card">
+            <div class="setting-row"><div><strong>@cacheInfo.EntryCount gespeicherte Antworten</strong><span>@FormatBytes(cacheInfo.SizeInBytes)</span></div><span class="pill neutral">App-Sandbox</span></div>
+            <button class="settings-action danger-text" disabled="@(cacheInfo.EntryCount == 0)" @onclick="ClearCacheAsync"><span>Offline-Daten löschen</span><b aria-hidden="true">›</b></button>
+        </div>
+    </section>
+
+    <section class="settings-group" aria-labelledby="about-heading">
+        <div class="settings-heading"><span class="settings-symbol" aria-hidden="true">i</span><div><h2 id="about-heading">Über die App</h2><p>Technische Informationen</p></div></div>
+        <div class="settings-card">
+            <div class="setting-row"><span>Version</span><strong>@appVersion (@appBuild)</strong></div>
+            <div class="setting-row divided"><span>Plattform</span><strong>.NET MAUI · Android</strong></div>
+        </div>
+    </section>
+</section>
+
+@code {
+    private string pin = string.Empty;
+    private string confirmation = string.Empty;
+    private string baseUrl = string.Empty;
+    private string? error;
+    private string? success;
+    private bool biometricBusy;
+    private BiometricAvailability biometricAvailability;
+    private OfflineCacheInfo cacheInfo = new(0, 0);
+    private BudgetViewMode defaultViewMode;
+    private MobileStartPage startPage;
+    private string appVersion = string.Empty;
+    private string appBuild = string.Empty;
+
+    private string BiometricAvailabilityLabel => biometricAvailability switch
+    {
+        BiometricAvailability.Available => Biometrics.IsEnabled ? "Fingerabdruck oder Gesicht ist aktiviert" : "Auf diesem Gerät verfügbar",
+        BiometricAvailability.NotEnrolled => "In Android ist noch keine Biometrie eingerichtet",
+        BiometricAvailability.NoHardware => "Dieses Gerät hat keine unterstützte Biometrie",
+        _ => "Biometrie ist derzeit nicht verfügbar"
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Session.LoadAsync();
+        await AppLock.LoadAsync();
+        if (!AppLock.IsEnabled && Biometrics.IsEnabled)
+        {
+            Biometrics.SetEnabled(false);
+        }
+        baseUrl = Session.BaseUrl ?? string.Empty;
+        biometricAvailability = Biometrics.GetAvailability();
+        cacheInfo = await Cache.GetInfoAsync();
+        defaultViewMode = MobilePreferences.DefaultViewMode;
+        startPage = MobilePreferences.StartPage;
+        appVersion = AppInfo.Current.VersionString;
+        appBuild = AppInfo.Current.BuildString;
+    }
+
+    private async Task SavePinAsync()
+    {
+        ClearMessages();
+        try
+        {
+            if (pin != confirmation) throw new InvalidOperationException("Die beiden PIN-Eingaben stimmen nicht überein.");
+            await AppLock.ConfigureAsync(pin);
+            pin = confirmation = string.Empty;
+            success = "Die App-PIN wurde gespeichert.";
+        }
+        catch (Exception ex) { error = ex.Message; }
+    }
+
+    private async Task DisableLockAsync()
+    {
+        await AppLock.DisableAsync();
+        Biometrics.SetEnabled(false);
+        pin = confirmation = string.Empty;
+        error = null;
+        success = "App-PIN und biometrisches Entsperren wurden deaktiviert.";
+    }
+
+    private async Task ToggleBiometricsAsync()
+    {
+        ClearMessages();
+        if (Biometrics.IsEnabled)
+        {
+            Biometrics.SetEnabled(false);
+            success = "Biometrisches Entsperren wurde deaktiviert.";
+            return;
+        }
+        if (!AppLock.IsEnabled)
+        {
+            error = "Richte zuerst eine App-PIN als Fallback ein.";
+            return;
+        }
+
+        biometricBusy = true;
+        try
+        {
+            var result = await Biometrics.AuthenticateAsync("Biometrisches Entsperren aktivieren");
+            if (result.Success)
+            {
+                Biometrics.SetEnabled(true);
+                success = "Biometrisches Entsperren wurde aktiviert.";
+            }
+            else if (!result.Cancelled) error = result.ErrorMessage ?? "Biometrische Bestätigung fehlgeschlagen.";
+        }
+        finally { biometricBusy = false; }
+    }
+
+    private void LockNow() => AppLock.Lock();
+
+    private void SavePreferences()
+    {
+        MobilePreferences.DefaultViewMode = defaultViewMode;
+        MobilePreferences.StartPage = startPage;
+        error = null;
+        success = "Darstellungseinstellungen gespeichert.";
+    }
+
+    private async Task SaveInstanceAsync()
+    {
+        ClearMessages();
+        try
+        {
+            await Session.SetBaseUrlAsync(baseUrl);
+            await Session.ClearAsync();
+            await Cache.ClearAsync();
+            Navigation.NavigateTo("/", replace: true);
+        }
+        catch (Exception ex) { error = ex.Message; }
+    }
+
+    private async Task ClearCacheAsync()
+    {
+        await Cache.ClearAsync();
+        cacheInfo = await Cache.GetInfoAsync();
+        error = null;
+        success = "Die Offline-Daten wurden gelöscht.";
+    }
+
+    private async Task LogoutAsync()
+    {
+        await Session.ClearAsync();
+        Navigation.NavigateTo("/", replace: true);
+    }
+
+    private void ClearMessages() { error = null; success = null; }
+
+    private static string FormatBytes(long bytes)
+    {
+        if (bytes / 1024 == 0)
+        {
+            return $"{bytes} B";
+        }
+        if (bytes / (1024 * 1024) == 0)
+        {
+            return $"{bytes / 1024d:N1} KB";
+        }
+        return $"{bytes / 1024d / 1024d:N1} MB";
+    }
+}

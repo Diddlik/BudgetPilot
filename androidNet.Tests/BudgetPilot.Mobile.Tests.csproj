@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="FluentAssertions" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\src\BudgetPilot.Application\BudgetPilot.Application.csproj" />
+    <Compile Include="..\androidNet\Services\PinPolicy.cs" Link="Services\PinPolicy.cs" />
+    <Compile Include="..\androidNet\Services\VersionFormModel.cs" Link="Services\VersionFormModel.cs" />
+    <Compile Include="..\androidNet\Services\BudgetItemInputValidator.cs" Link="Services\BudgetItemInputValidator.cs" />
+  </ItemGroup>
+</Project>

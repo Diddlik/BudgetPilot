@@ -1,0 +1,10 @@
+@if (Api.LastReadWasOffline)
+{
+    <div class="offline-notice" role="status">
+        Offline · Stand @(Api.LastCacheTimestamp?.ToLocalTime().ToString("dd.MM.yyyy HH:mm") ?? "unbekannt")
+    </div>
+}
+
+@code {
+    [Inject] private BudgetPilotApiClient Api { get; set; } = default!;
+}

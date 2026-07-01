@@ -1,0 +1,40 @@
+<fieldset class="version-fields">
+    <legend>Finanzielle Version</legend>
+    <div class="form-grid">
+        <label>
+            Betrag in EUR
+            <input class="field" type="number" min="0" step="0.01" inputmode="decimal" required @bind="Model.Amount" />
+        </label>
+        <label>
+            Frequenz
+            <select class="field" @bind="Model.Frequency">
+                <option value="@BudgetFrequency.Monthly">Monatlich</option>
+                <option value="@BudgetFrequency.Quarterly">Quartalsweise</option>
+                <option value="@BudgetFrequency.Yearly">Jährlich</option>
+                <option value="@BudgetFrequency.Once">Einmalig</option>
+            </select>
+        </label>
+    </div>
+    <label>
+        Gültig ab
+        <input class="field" type="date" required @bind="Model.ValidFrom" @bind:format="yyyy-MM-dd" />
+    </label>
+    <div class="form-grid">
+        <label>
+            Zahlungstag (optional)
+            <input class="field" type="number" min="1" max="31" inputmode="numeric" @bind="Model.PaymentDay" />
+        </label>
+        <label>
+            Zahlungsmonat (optional)
+            <input class="field" type="number" min="1" max="12" inputmode="numeric" @bind="Model.PaymentMonth" />
+        </label>
+    </div>
+    <label>
+        Notiz (optional)
+        <textarea class="field textarea" rows="2" maxlength="500" @bind="Model.Note"></textarea>
+    </label>
+</fieldset>
+
+@code {
+    [Parameter, EditorRequired] public VersionFormModel Model { get; set; } = default!;
+}

@@ -1,0 +1,214 @@
+@page "/categories"
+@inject AppSession Session
+@inject BudgetPilotApiClient Api
+@inject NavigationManager Navigation
+
+<section class="dashboard-screen">
+    <header class="topbar">
+        <div>
+            <p class="eyebrow">Budget</p>
+            <h1>Kategorien</h1>
+            <span>Struktur deiner Budgetpositionen</span>
+        </div>
+        <button class="icon-button" aria-label="Neue Kategorie" title="Neue Kategorie" @onclick="ToggleCreate">+</button>
+    </header>
+    <OfflineNotice />
+
+    @if (showCreate)
+    {
+        <form class="panel compact-form" @onsubmit="CreateAsync" @onsubmit:preventDefault="true">
+            <label>
+                Name der neuen Kategorie
+                <input class="field" required maxlength="100" @bind="newName" />
+            </label>
+            <div class="form-actions">
+                <button class="button secondary" type="button" @onclick="ToggleCreate">Abbrechen</button>
+                <button class="button primary" type="submit" disabled="@isSaving">Speichern</button>
+            </div>
+        </form>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(error))
+    {
+        <div class="alert" role="alert">
+            <span>@error</span>
+            <button class="text-button" @onclick="LoadAsync">Erneut versuchen</button>
+        </div>
+    }
+    else if (isLoading)
+    {
+        <div class="panel loading-panel">Lade Kategorien...</div>
+    }
+    else if (categories.Count == 0)
+    {
+        <div class="panel empty-state">Noch keine Kategorien vorhanden.</div>
+    }
+    else
+    {
+        <div class="summary-row">
+            <span>@categories.Count Kategorien</span>
+            <span>@categories.Sum(c => c.ItemCount) Zuordnungen</span>
+        </div>
+
+        <section class="panel item-cards">
+            @foreach (var category in categories.OrderByDescending(c => c.IsActive).ThenBy(c => c.Name))
+            {
+                <article class="entity-row">
+                    <div class="entity-icon category" aria-hidden="true">#</div>
+                    <div class="entity-copy">
+                        @if (editingId == category.Id)
+                        {
+                            <form class="inline-edit" @onsubmit="() => RenameAsync(category.Id)" @onsubmit:preventDefault="true">
+                                <input class="field" aria-label="Kategoriename" required maxlength="100" @bind="editName" />
+                                <button class="text-button" type="submit">Speichern</button>
+                                <button class="text-button muted-action" type="button" @onclick="CancelEdit">Abbrechen</button>
+                            </form>
+                        }
+                        else
+                        {
+                            <strong>@category.Name</strong>
+                            <span>@ItemCountLabel(category.ItemCount)</span>
+                        }
+                    </div>
+                    @if (editingId != category.Id)
+                    {
+                        <div class="row-actions">
+                            @if (category.IsActive)
+                            {
+                                <button class="small-action" aria-label="Kategorie @category.Name umbenennen"
+                                        @onclick="() => StartEdit(category)">Ändern</button>
+                                <button class="small-action danger" aria-label="Kategorie @category.Name deaktivieren"
+                                        disabled="@isSaving"
+                                        @onclick="() => DeactivateAsync(category.Id)">Deaktivieren</button>
+                            }
+                            else
+                            {
+                                <span class="pill neutral">inaktiv</span>
+                            }
+                        </div>
+                    }
+                </article>
+            }
+        </section>
+    }
+
+    <AppNavigation />
+</section>
+
+@code {
+    private List<CategoryDto> categories = [];
+    private bool isLoading = true;
+    private bool isSaving;
+    private bool showCreate;
+    private string newName = string.Empty;
+    private Guid? editingId;
+    private string editName = string.Empty;
+    private string? error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Session.LoadAsync();
+        if (!Session.IsSignedIn)
+        {
+            Navigation.NavigateTo("/", replace: true);
+            return;
+        }
+
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        error = null;
+        isLoading = true;
+        try
+        {
+            categories = await Api.GetCategoriesAsync();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            await Session.ClearAsync();
+            Navigation.NavigateTo("/", replace: true);
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private static string ItemCountLabel(int count) =>
+        count == 1 ? "1 Budgetposition" : $"{count} Budgetpositionen";
+
+    private void ToggleCreate()
+    {
+        showCreate = !showCreate;
+        newName = string.Empty;
+        error = null;
+    }
+
+    private void StartEdit(CategoryDto category)
+    {
+        editingId = category.Id;
+        editName = category.Name;
+        error = null;
+    }
+
+    private void CancelEdit() => editingId = null;
+
+    private async Task CreateAsync()
+    {
+        if (isSaving)
+        {
+            return;
+        }
+
+        await SaveAsync(async () =>
+        {
+            await Api.CreateCategoryAsync(new CreateCategoryRequest(newName.Trim()));
+            showCreate = false;
+            newName = string.Empty;
+        });
+    }
+
+    private async Task RenameAsync(Guid id)
+    {
+        await SaveAsync(async () =>
+        {
+            await Api.RenameCategoryAsync(id, new RenameCategoryRequest(editName.Trim()));
+            editingId = null;
+        });
+    }
+
+    private async Task DeactivateAsync(Guid id)
+    {
+        await SaveAsync(() => Api.DeactivateCategoryAsync(id));
+    }
+
+    private async Task SaveAsync(Func<Task> action)
+    {
+        error = null;
+        isSaving = true;
+        try
+        {
+            await action();
+            await LoadAsync();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            await Session.ClearAsync();
+            Navigation.NavigateTo("/", replace: true);
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+}
