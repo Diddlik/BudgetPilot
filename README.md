@@ -5,6 +5,12 @@ Ausgaben als **zeitlich versionierte Budgetregeln**. Daraus werden **Monats- und
 Jahresübersichten** in zwei Berechnungsarten erzeugt: **Budget-Sicht** (lumpy Kosten
 anteilig verteilt) und **Cashflow-Sicht** (Beträge im tatsächlichen Zahlungsmonat).
 Historische Monate ändern sich durch spätere Anpassungen nie.
+## Screenshots
+<img width="1752" height="971" alt="image" src="https://github.com/user-attachments/assets/ae10caae-07b7-4f15-b568-0eede34bd127" />
+<img width="1733" height="883" alt="image" src="https://github.com/user-attachments/assets/e4570dc3-3049-482e-9ecb-4ce01167fb8b" />
+<img width="1610" height="922" alt="image" src="https://github.com/user-attachments/assets/2a3f1951-53f8-4cde-b90b-6672427534d2" />
+<img width="552" height="1151" alt="image" src="https://github.com/user-attachments/assets/1a18b6bf-0d18-4324-a697-9b17f175c4d1" /><img width="549" height="1151" alt="image" src="https://github.com/user-attachments/assets/4148137a-efae-49f4-b5e6-9b27bbc88af3" />
+
 
 ## Stack
 
