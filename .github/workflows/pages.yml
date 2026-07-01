@@ -1,5 +1,6 @@
 name: Publish privacy policy
 
+# Publishes the static site after GitHub Pages has been enabled for the repository.
 on:
   push:
     branches: [main]
