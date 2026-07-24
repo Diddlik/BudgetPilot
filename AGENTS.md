@@ -26,6 +26,10 @@ user, public registration disabled, account seeded on startup from
 Login/logout are static-SSR pages under `Components/Account` (cookie sign-in needs an
 HTTP context, not a SignalR circuit); every other page gets `[Authorize]` via
 `Components/_Imports.razor`, while account/error pages opt out with `[AllowAnonymous]`.
+Docker deployments persist ASP.NET Core Data Protection keys under
+`/app/data/keys`, so cookie and bearer refresh tokens remain valid across container
+updates. An expired or otherwise invalid refresh token returns `401` without a
+cookie-login redirect; mobile clients clear the session and request a new login.
 **JSON API (for the Android app):** a versioned REST API lives in
 `src/BudgetPilot.Web/Api/` — `AuthEndpoints.cs` maps `/api/auth/login` + `/refresh`
 (ASP.NET Identity **bearer tokens**, `IdentityConstants.BearerScheme`; deliberately

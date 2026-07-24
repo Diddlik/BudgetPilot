@@ -297,7 +297,16 @@ public sealed class BudgetPilotApiClient
             return false;
         }
 
-        var tokens = await ReadResponseAsync<TokenResponse>(response, cancellationToken);
+        TokenResponse tokens;
+        try
+        {
+            tokens = await ReadResponseAsync<TokenResponse>(response, cancellationToken);
+        }
+        catch (JsonException)
+        {
+            await session.ClearAsync();
+            return false;
+        }
         await session.StoreTokensAsync(tokens);
         return true;
     }

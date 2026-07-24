@@ -52,7 +52,7 @@ public static class AuthEndpoints
                 || timeProvider.GetUtcNow() >= expiresUtc
                 || await signInManager.ValidateSecurityStampAsync(refreshTicket.Principal) is not { } user)
             {
-                return TypedResults.Challenge();
+                return TypedResults.Unauthorized();
             }
 
             var newPrincipal = await signInManager.CreateUserPrincipalAsync(user);
