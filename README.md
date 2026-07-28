@@ -158,7 +158,7 @@ Technische Planung und Mobile-Anforderungen:
 
 - [`Docs/IMPLEMENTATION_PLAN.md`](Docs/IMPLEMENTATION_PLAN.md)
 - [`Docs/ANDROID_APP_REQUIREMENTS.md`](Docs/ANDROID_APP_REQUIREMENTS.md)
-- [`AGENTS.md`](AGENTS.md)
+- [`AGENT_INSTRUCTIONS.md`](AGENT_INSTRUCTIONS.md) — Single Point of Truth für alle KI-Agenten (`CLAUDE.md` und `AGENTS.md` verweisen nur darauf)
 
 ## Tests
 

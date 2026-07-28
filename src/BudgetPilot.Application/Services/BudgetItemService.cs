@@ -38,6 +38,9 @@ public sealed class BudgetItemService : IBudgetItemService
     /// <summary>Letzter Tag des Monats VOR dem Monat von <paramref name="d"/> (Monatsgrenze für Versionen).</summary>
     private static DateOnly EndOfPreviousMonth(DateOnly d) => new DateOnly(d.Year, d.Month, 1).AddDays(-1);
 
+    /// <summary>Erster Tag des Monats NACH dem Monat von <paramref name="d"/>.</summary>
+    private static DateOnly StartOfNextMonth(DateOnly d) => new DateOnly(d.Year, d.Month, 1).AddMonths(1);
+
     private static string Freq(BudgetFrequency frequency) => frequency switch
     {
         BudgetFrequency.Monthly => "monatlich",
@@ -219,20 +222,9 @@ public sealed class BudgetItemService : IBudgetItemService
         var current = DtoMapper.CurrentVersion(item)
             ?? throw new DomainException("Position besitzt keine Version, die in-place aktualisiert werden könnte.");
 
-        BudgetValidation.ValidateVersionValues(
-            request.Amount, request.ValidFrom, current.ValidTo, request.PaymentDay, request.PaymentMonth);
-
-        // In-place Änderung darf keine Überschneidung mit den anderen Versionen erzeugen.
-        BudgetValidation.EnsureNoOverlap(item.Versions, request.ValidFrom, current.ValidTo, ignoreVersionId: current.Id);
-
         var beforeAmount = current.Amount;
 
-        current.Amount = request.Amount;
-        current.Frequency = request.Frequency;
-        current.ValidFrom = request.ValidFrom;
-        current.PaymentDay = request.PaymentDay;
-        current.PaymentMonth = request.PaymentMonth;
-        current.Note = request.Note;
+        ApplyVersionUpdate(item, current, request);
         item.UpdatedAt = DateTime.UtcNow;
 
         _items.Update(item);
@@ -254,22 +246,11 @@ public sealed class BudgetItemService : IBudgetItemService
         var version = item.Versions.FirstOrDefault(v => v.Id == versionId)
             ?? throw new DomainException("Die zu ändernde Version wurde nicht gefunden.");
 
-        // Gültig-bis bleibt erhalten – nur die Inhalte (und ggf. Gültig-ab) werden korrigiert.
-        BudgetValidation.ValidateVersionValues(
-            request.Amount, request.ValidFrom, version.ValidTo, request.PaymentDay, request.PaymentMonth);
-
-        // Korrektur darf keine Überschneidung mit den anderen Versionen erzeugen.
-        BudgetValidation.EnsureNoOverlap(item.Versions, request.ValidFrom, version.ValidTo, ignoreVersionId: version.Id);
-
         var beforeAmount = version.Amount;
         var beforeFrom = version.ValidFrom;
+        var beforeTo = version.ValidTo;
 
-        version.Amount = request.Amount;
-        version.Frequency = request.Frequency;
-        version.ValidFrom = request.ValidFrom;
-        version.PaymentDay = request.PaymentDay;
-        version.PaymentMonth = request.PaymentMonth;
-        version.Note = request.Note;
+        ApplyVersionUpdate(item, version, request);
         item.UpdatedAt = DateTime.UtcNow;
 
         _items.Update(item);
@@ -278,9 +259,69 @@ public sealed class BudgetItemService : IBudgetItemService
         var change = beforeAmount != request.Amount
             ? $"{Money(beforeAmount)} → {Money(request.Amount)}"
             : Money(request.Amount);
+        var period = version.ValidFrom != beforeFrom || version.ValidTo != beforeTo
+            ? $", Zeitraum {version.ValidFrom:dd.MM.yyyy}–{version.ValidTo?.ToString("dd.MM.yyyy") ?? "offen"}"
+            : string.Empty;
         await _audit.RecordAsync(AuditAction.Updated, "BudgetItem", item.Id, item.Name,
-            $"{change} · {Freq(request.Frequency)} (Version ab {beforeFrom:dd.MM.yyyy} korrigiert)", ct)
+            $"{change} · {Freq(request.Frequency)} (Version ab {beforeFrom:dd.MM.yyyy} korrigiert{period})", ct)
             .ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Schreibt die Korrektur auf die Version und zieht die direkten Nachbarn automatisch nach
+    /// (§4.3): Der korrigierte Zeitraum gewinnt, der Vorgänger endet im Monat davor, der
+    /// Nachfolger beginnt im Monat danach. Grenzen liegen auf MONATSebene, weil die Projektion
+    /// monatsweise rechnet und ein Monat nie zu zwei Versionen gehören darf (§4.1.2).
+    /// <paramref name="request"/>.ValidTo == null heißt „offen" und wird – falls es eine
+    /// Folgeversion gibt – auf deren Vormonat geklemmt.
+    /// </summary>
+    private static void ApplyVersionUpdate(BudgetItem item, BudgetItemVersion version, UpdateVersionRequest request)
+    {
+        BudgetValidation.ValidateVersionValues(
+            request.Amount, request.ValidFrom, request.ValidTo, request.PaymentDay, request.PaymentMonth);
+
+        version.Amount = request.Amount;
+        version.Frequency = request.Frequency;
+        version.ValidFrom = request.ValidFrom;
+        version.ValidTo = request.ValidTo;
+        version.PaymentDay = request.PaymentDay;
+        version.PaymentMonth = request.PaymentMonth;
+        version.Note = request.Note;
+
+        var others = item.Versions.Where(v => v.Id != version.Id).ToList();
+
+        var predecessor = others
+            .Where(v => v.ValidFrom < version.ValidFrom)
+            .OrderByDescending(v => v.ValidFrom)
+            .FirstOrDefault();
+        if (predecessor is not null)
+        {
+            var boundary = EndOfPreviousMonth(version.ValidFrom);
+            if (predecessor.ValidTo is null || predecessor.ValidTo > boundary)
+                predecessor.ValidTo = boundary;
+        }
+
+        var successor = others
+            .Where(v => v.ValidFrom > version.ValidFrom)
+            .OrderBy(v => v.ValidFrom)
+            .FirstOrDefault();
+        if (successor is not null)
+        {
+            if (version.ValidTo is null)
+            {
+                // „offen" bedeutet hier: bis zur nächsten Version.
+                version.ValidTo = EndOfPreviousMonth(successor.ValidFrom);
+            }
+            else
+            {
+                var start = StartOfNextMonth(version.ValidTo.Value);
+                if (successor.ValidFrom < start)
+                    successor.ValidFrom = start;
+            }
+        }
+
+        // Nach dem Nachziehen muss die gesamte Kette lückenlos eindeutig sein.
+        BudgetValidation.EnsureNoMonthOverlap(item.Versions);
     }
 
     public async Task<IReadOnlyList<BudgetItemDto>> GetAllAsync(CancellationToken ct = default)

@@ -19,6 +19,14 @@
         Gültig ab
         <input class="field" type="date" required @bind="Model.ValidFrom" @bind:format="yyyy-MM-dd" />
     </label>
+    @if (ShowValidTo)
+    {
+        <label>
+            Gültig bis (leer = offen)
+            <input class="field" type="date" @bind="Model.ValidTo" @bind:format="yyyy-MM-dd" />
+            <span class="hint">Nachbarversionen werden automatisch auf den Vor-/Folgemonat verschoben.</span>
+        </label>
+    }
     <div class="form-grid">
         <label>
             Zahlungstag (optional)
@@ -37,4 +45,7 @@
 
 @code {
     [Parameter, EditorRequired] public VersionFormModel Model { get; set; } = default!;
+
+    /// <summary>„Gültig bis" nur beim Korrigieren einer bestehenden Version anbieten.</summary>
+    [Parameter] public bool ShowValidTo { get; set; }
 }

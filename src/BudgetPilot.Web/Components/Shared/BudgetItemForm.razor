@@ -54,7 +54,7 @@
 
             <label>
                 Betrag (EUR)
-                <input class="field numeric" inputmode="decimal" @bind="AmountText" @bind:event="oninput" />
+                <input class="field numeric" inputmode="decimal" placeholder="0,00" @bind="AmountText" @bind:event="oninput" />
             </label>
 
             <label>
@@ -71,6 +71,15 @@
                 Gültig ab / Datum
                 <input class="field" type="date" value="@ValidFromText" @onchange="OnValidFromChanged" />
             </label>
+
+            @if (Mode == "EditVersion")
+            {
+                <label>
+                    Gültig bis (leer = offen)
+                    <input class="field" type="date" value="@ValidToText" @onchange="OnValidToChanged" />
+                    <span class="hint">Nachbarversionen werden automatisch auf den Vor-/Folgemonat verschoben.</span>
+                </label>
+            }
 
             @if (Frequency is BudgetFrequency.Yearly or BudgetFrequency.Quarterly)
             {
@@ -113,9 +122,10 @@
     private string? Owner { get; set; }
     private BudgetItemType Type { get; set; } = BudgetItemType.Expense;
     private Guid CategoryId { get; set; }
-    private string AmountText { get; set; } = "0,00";
+    private string AmountText { get; set; } = string.Empty;
     private BudgetFrequency Frequency { get; set; } = BudgetFrequency.Monthly;
     private string ValidFromText { get; set; } = DateOnly.FromDateTime(DateTime.Today).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+    private string ValidToText { get; set; } = string.Empty;
     private string PaymentMonthText { get; set; } = string.Empty;
     private string? Note { get; set; }
     private string? error;
@@ -157,11 +167,15 @@
         Owner = Item?.Owner;
         Type = Item?.Type ?? BudgetItemType.Expense;
         CategoryId = PresetCategoryId ?? Item?.CategoryId ?? activeCategories.FirstOrDefault()?.Id ?? Guid.Empty;
-        AmountText = (source?.Amount ?? 0m).ToString("N2", culture);
+        // Beim Anlegen leer lassen – der Platzhalter zeigt das Format, kein hart gesetztes 0,00.
+        AmountText = source?.Amount.ToString("N2", culture) ?? string.Empty;
         Frequency = source?.Frequency ?? BudgetFrequency.Monthly;
         // Bei "Version" (neue Version) heute vorbelegen; sonst das Datum der Quelle.
         ValidFromText = (Mode == "Version" ? DateOnly.FromDateTime(DateTime.Today) : source?.ValidFrom ?? DateOnly.FromDateTime(DateTime.Today))
             .ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        ValidToText = Mode == "EditVersion"
+            ? source?.ValidTo?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? string.Empty
+            : string.Empty;
         PaymentMonthText = source?.PaymentMonth?.ToString(CultureInfo.InvariantCulture) ?? string.Empty;
         Note = source?.Note;
     }
@@ -193,7 +207,8 @@
             }
             else if (Mode == "EditVersion" && Item is not null && VersionId is { } versionId)
             {
-                await Items.UpdateVersionAsync(Item.Id, versionId, new UpdateVersionRequest(amount, Frequency, validFrom, null, paymentMonth, Note));
+                var validTo = DateOnly.TryParse(ValidToText, out var parsedTo) ? parsedTo : (DateOnly?)null;
+                await Items.UpdateVersionAsync(Item.Id, versionId, new UpdateVersionRequest(amount, Frequency, validFrom, null, paymentMonth, Note, validTo));
                 saved = await Items.GetByIdAsync(Item.Id);
             }
             else
@@ -224,6 +239,11 @@
     private void OnValidFromChanged(ChangeEventArgs args)
     {
         ValidFromText = args.Value?.ToString() ?? string.Empty;
+    }
+
+    private void OnValidToChanged(ChangeEventArgs args)
+    {
+        ValidToText = args.Value?.ToString() ?? string.Empty;
     }
 
     // Schließen nur, wenn der Klick wirklich auf dem Hintergrund begann. Verhindert,

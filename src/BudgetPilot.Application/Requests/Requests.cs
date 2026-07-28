@@ -33,14 +33,18 @@ public record CreateBudgetItemVersionRequest(
     int? PaymentMonth,
     string? Note);
 
-/// <summary>Aktualisiert die aktuelle (jüngste, offene) Version in-place (Korrektur ohne neue Version).</summary>
+/// <summary>
+/// Aktualisiert eine Version in-place (Korrektur ohne neue Version). <see cref="ValidTo"/> = null
+/// bedeutet „offen" – existiert eine Folgeversion, wird automatisch auf deren Vormonat geklemmt.
+/// </summary>
 public record UpdateVersionRequest(
     decimal Amount,
     BudgetFrequency Frequency,
     DateOnly ValidFrom,
     int? PaymentDay,
     int? PaymentMonth,
-    string? Note);
+    string? Note,
+    DateOnly? ValidTo = null);
 
 /// <summary>Legt eine neue Kategorie an.</summary>
 public record CreateCategoryRequest(string Name);

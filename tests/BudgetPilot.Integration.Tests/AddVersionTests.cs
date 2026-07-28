@@ -146,6 +146,49 @@ public sealed class AddVersionTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task UpdateVersion_moving_valid_from_back_shifts_the_predecessor()
+    {
+        // Nutzerfall: V1 15.05.2025-30.04.2026, V2 ab 15.05.2026. V2 soll ab 01.03.2026 gelten.
+        var id = await CreateItemAsync(new DateOnly(2025, 5, 15), amount: 10m);
+        await _items.AddVersionAsync(id, new CreateBudgetItemVersionRequest(
+            12m, BudgetFrequency.Monthly, new DateOnly(2026, 5, 15), null, null, null));
+
+        var v2 = (await _items.GetByIdAsync(id))!.Versions.Single(v => v.IsCurrent);
+        await _items.UpdateVersionAsync(id, v2.Id, new UpdateVersionRequest(
+            12m, BudgetFrequency.Monthly, new DateOnly(2026, 3, 1), null, null, null));
+
+        var reloaded = (await _items.GetByIdAsync(id))!;
+        reloaded.Versions.Single(v => v.Id == v2.Id).ValidTo.Should().BeNull();
+        // Der Vorgänger wurde automatisch auf den Vormonat zurückgezogen.
+        reloaded.Versions.Single(v => v.Id != v2.Id).ValidTo.Should().Be(new DateOnly(2026, 2, 28));
+    }
+
+    [Fact]
+    public async Task UpdateVersion_extending_valid_to_shifts_the_successor()
+    {
+        var id = await CreateItemAsync(new DateOnly(2025, 5, 15), amount: 10m);
+        await _items.AddVersionAsync(id, new CreateBudgetItemVersionRequest(
+            12m, BudgetFrequency.Monthly, new DateOnly(2026, 5, 15), null, null, null));
+
+        var item = (await _items.GetByIdAsync(id))!;
+        var v1 = item.Versions.Single(v => !v.IsCurrent);
+        var v2 = item.Versions.Single(v => v.IsCurrent);
+
+        // V1 soll bis 31.07.2026 laufen -> V2 muss nach hinten rutschen.
+        await _items.UpdateVersionAsync(id, v1.Id, new UpdateVersionRequest(
+            10m, BudgetFrequency.Monthly, v1.ValidFrom, null, null, null, new DateOnly(2026, 7, 31)));
+
+        var reloaded = (await _items.GetByIdAsync(id))!;
+        reloaded.Versions.Single(v => v.Id == v1.Id).ValidTo.Should().Be(new DateOnly(2026, 7, 31));
+        reloaded.Versions.Single(v => v.Id == v2.Id).ValidFrom.Should().Be(new DateOnly(2026, 8, 1));
+
+        // Die Projektion über den verschobenen Übergang darf nicht werfen.
+        var projection = new BudgetProjectionService(new BudgetItemRepository(_db));
+        var act = async () => await projection.GetMonthlyProjectionAsync(2026, 7, BudgetViewMode.Cashflow);
+        await act.Should().NotThrowAsync();
+    }
+
+    [Fact]
     public async Task AddVersion_before_two_existing_bounds_at_next_version_not_open_one()
     {
         // Reproduziert den Nutzerfall „Gehalt":

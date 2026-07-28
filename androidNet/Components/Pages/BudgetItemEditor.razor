@@ -100,7 +100,7 @@
                 {
                     <form class="nested-form" @onsubmit="SaveVersionAsync" @onsubmit:preventDefault="true">
                         <h3>@(editingVersionId is null ? "Neue Version ab Stichtag" : "Version korrigieren")</h3>
-                        <VersionFields Model="versionForm" />
+                        <VersionFields Model="versionForm" ShowValidTo="@(editingVersionId is not null)" />
                         <div class="form-actions">
                             <button class="button secondary" type="button" @onclick="CancelVersion">Abbrechen</button>
                             <button class="button primary" type="submit" disabled="@isSaving">Version speichern</button>
@@ -283,7 +283,8 @@
             {
                 await Api.UpdateBudgetItemVersionAsync(Id, versionId, new UpdateVersionRequest(
                     versionForm.Amount, versionForm.Frequency, versionForm.ValidFrom,
-                    versionForm.PaymentDay, versionForm.PaymentMonth, EmptyToNull(versionForm.Note)));
+                    versionForm.PaymentDay, versionForm.PaymentMonth, EmptyToNull(versionForm.Note),
+                    versionForm.ValidTo));
             }
             else
             {

@@ -20,6 +20,10 @@ public static class BudgetItemInputValidator
         {
             throw new InvalidOperationException("Der Betrag darf nicht negativ sein.");
         }
+        if (model.ValidTo is { } validTo && validTo < model.ValidFrom)
+        {
+            throw new InvalidOperationException("„Gültig bis“ darf nicht vor „Gültig ab“ liegen.");
+        }
         if (model.PaymentDay is < 1 or > 31)
         {
             throw new InvalidOperationException("Der Zahlungstag muss zwischen 1 und 31 liegen.");

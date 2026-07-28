@@ -59,6 +59,35 @@ public static class BudgetValidation
         }
     }
 
+    /// <summary>
+    /// Prüft die Versionskette eines Items auf MONATSebene (§4.1.2): kein Monat darf von zwei
+    /// Versionen berührt werden (die Projektion rechnet monatsweise), und keine Version darf
+    /// durch eine Grenzverschiebung leer werden.
+    /// </summary>
+    public static void EnsureNoMonthOverlap(IEnumerable<BudgetItemVersion> versions)
+    {
+        var ordered = versions.OrderBy(v => v.ValidFrom).ToList();
+
+        for (var i = 0; i < ordered.Count; i++)
+        {
+            var v = ordered[i];
+
+            if (v.ValidTo is { } to && MonthKey(to) < MonthKey(v.ValidFrom))
+                throw new DomainException(
+                    $"Die Version ab {v.ValidFrom:dd.MM.yyyy} hätte danach keinen gültigen Monat mehr. Wähle einen anderen Zeitraum.");
+
+            if (i == 0)
+                continue;
+
+            var prev = ordered[i - 1];
+            if (prev.ValidTo is null || MonthKey(prev.ValidTo.Value) >= MonthKey(v.ValidFrom))
+                throw new DomainException(
+                    $"Die Versionen ab {prev.ValidFrom:dd.MM.yyyy} und ab {v.ValidFrom:dd.MM.yyyy} würden sich denselben Monat teilen.");
+        }
+    }
+
+    private static int MonthKey(DateOnly d) => d.Year * 12 + d.Month;
+
     /// <summary>Halboffene/geschlossene Intervalle [from, to] (to == null = unendlich) überschneiden sich?</summary>
     private static bool IntervalsOverlap(DateOnly aFrom, DateOnly? aTo, DateOnly bFrom, DateOnly? bTo)
     {

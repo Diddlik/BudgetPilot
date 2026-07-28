@@ -3,7 +3,8 @@
 > Quelle der Wahrheit für **was** gebaut wird: `Docs/BudgetPilot – Technical Specification/requirements.md`.
 > Dieses Dokument beschreibt das **wie** und **wer wann woran** — so geschnitten, dass drei KI-CLIs
 > (Claude Code, Codex, Gemini CLI) gleichzeitig arbeiten können, ohne sich gegenseitig zu blockieren.
-> `CLAUDE.md` im Repo-Root ist Living-Doc; architekturrelevante Änderungen dort nachziehen.
+> `AGENT_INSTRUCTIONS.md` im Repo-Root ist der Single Point of Truth (Living-Doc) für alle Agenten;
+> architekturrelevante Änderungen dort nachziehen. `CLAUDE.md`/`AGENTS.md` sind nur Verweise.
 
 ---
 
@@ -219,7 +220,7 @@ Definition of Done: dotnet test grün, sobald Track A gemergt ist.
 4. `Dockerfile` (multi-stage) + `docker-compose.yml` (SQLite, Port 8080, Volume `/app/data`) +
    `docker-compose.postgres.yml` vorbereiten (§11). Container-Start verifizieren.
 5. PWA vorbereiten (Manifest, Icon, Installierbarkeit) — Offline später.
-6. `README.md` (lokal starten, Docker starten, Tests) + `CLAUDE.md` aktualisieren, falls Architektur
+6. `README.md` (lokal starten, Docker starten, Tests) + `AGENT_INSTRUCTIONS.md` aktualisieren, falls Architektur
    abgewichen ist.
 7. **DoD-Checkliste Spec §14** abhaken.
 
