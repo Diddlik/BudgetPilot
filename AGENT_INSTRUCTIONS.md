@@ -109,6 +109,15 @@ Requirements/plan: `Docs/ANDROID_APP_REQUIREMENTS.md`. The public privacy policy
 is deployed from `site/` via `.github/workflows/pages.yml` to
 `https://diddlik.github.io/BudgetPilot/privacy/` and linked from mobile settings.
 
+**Play Store status:** `Budget Pilot` / `de.budgetpilot.mobile` is live in
+**closed testing (Alpha)** with `1.0.40` / versionCode 40; production is
+inactive and still blocked on the 12-testers-for-14-days requirement. Releases
+are built with `androidNet/build-release.ps1`, which needs the four
+`BUDGETPILOT_*` keystore environment variables (never committed) and derives the
+version from the Git commit count. Uploading and rolling out is a manual Play
+Console step — never publish on the user's behalf without explicit confirmation.
+Keep `Docs/GooglePlay/PLAY_CONSOLE_CHECKLIST.md` in sync with the console.
+
 **CI/CD & auto-update:** `.github/workflows/docker.yml` builds the image on every
 push to `main` and publishes it to GHCR as `ghcr.io/diddlik/budgetpilot:latest`
 (+ a `sha-<commit>` tag for rollback). The production server does **not** build —

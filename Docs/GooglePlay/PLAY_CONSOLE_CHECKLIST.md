@@ -1,10 +1,32 @@
 # BudgetPilot – Google Play Console
 
-Stand: 01.07.2026
+Stand: 28.07.2026
 
-Diese Datei enthält die konkreten Werte für den ersten Play-Store-Eintrag. Mit
-`[EINTRAGEN]` markierte Angaben müssen vor der Veröffentlichung durch echte,
-öffentlich erreichbare Werte ersetzt werden.
+Diese Datei enthält die konkreten Werte für den Play-Store-Eintrag. Mit
+`[EINTRAGEN]` markierte Angaben müssen vor der Produktionsveröffentlichung durch
+echte, öffentlich erreichbare Werte ersetzt werden.
+
+## 0. Aktueller Veröffentlichungsstand
+
+In der Play Console am 28.07.2026 verifiziert:
+
+| Feld | Stand |
+|---|---|
+| App | `Budget Pilot` (`de.budgetpilot.mobile`), App-ID `4975107145063189359` |
+| App-Status | **Geschlossener Test** (Closed testing) |
+| Produktion | **Inaktiv** |
+| Geschlossener Test – Alpha | `1.0.40 – Sitzungs-Update`, versionCode **40**, Full rollout, „Available to testers on Google Play“, 1 von 177 Ländern, zuletzt 24.07.2026 |
+| Interner Test | derselbe Build `1.0.40` / versionCode 40 |
+| Hochgeladene Bundles | 40 (aktiv), 37, 2, 1 (inaktiv) |
+| Installierte Zielgruppe | 2 |
+
+Produktionszugang ist noch gesperrt: der geschlossene Test ist zwar
+veröffentlicht, aber es sind **0 von 12 erforderlichen Testern** angemeldet und
+die 14-tägige Laufzeit ist offen — „Apply for production“ ist deaktiviert.
+
+**Nächster Release:** `build-release.ps1` leitet die Version aus der
+Git-Commit-Anzahl ab. Der nächste Build wäre `1.0.41` / versionCode **41** und
+damit korrekt höher als der aktive versionCode 40.
 
 Offizielle Referenzen:
 
@@ -182,19 +204,18 @@ Zusätzliche Antworten:
 
 - [x] Paket-ID festgelegt: `de.budgetpilot.mobile`
 - [x] Anzeigename: `BudgetPilot`
-- [x] Version Name: `1.0.0`
-- [x] Version Code: `1`
+- [x] Version Name / Version Code aktuell ausgeliefert: `1.0.40` / `40`
 - [x] Mindestversion: Android 8 / API 26
 - [x] Target: Android API 36.1 (übertrifft die aktuelle API-35-Mindestanforderung)
 - [ ] Öffentliche HTTPS-Demo-Instanz und Review-Konto bereitstellen
 - [x] Datenschutzrichtlinie finalisieren und Veröffentlichung per GitHub Pages konfigurieren
 - [x] Eigene Upload-Key-Datei sicher erzeugen und außerhalb des Repositories sichern
-- [ ] Play App Signing aktivieren; Google den App-Signing-Key erzeugen lassen
 - [x] Signiertes Android App Bundle (`.aab`) bauen
-- [ ] AAB zuerst in „Interner Test“ hochladen und auf einem echten Gerät installieren
+- [x] AAB in „Interner Test“ hochladen
+- [x] Geschlossenen Test (Alpha) veröffentlichen
 - [ ] Store-Screenshots erstellen und hochladen
 - [ ] Alle App-Inhalte- und Datensicherheits-Erklärungen absenden
-- [ ] Closed Test durchführen, falls die Play Console ihn für das Konto verlangt
+- [ ] **12 Tester in den geschlossenen Test aufnehmen (aktuell 0) und 14 Tage laufen lassen**
 - [ ] Produktionszugang beantragen und Release zur Prüfung senden
 
 Release-Build:
@@ -205,8 +226,20 @@ cd androidNet
 ```
 
 Keystore, Alias und Kennwörter dürfen weder committed noch in Screenshots oder
-Build-Logs veröffentlicht werden. Jeder spätere Release benötigt einen höheren
-`ApplicationVersion`-Wert.
+Build-Logs veröffentlicht werden. Sie werden ausschließlich über die
+Umgebungsvariablen `BUDGETPILOT_KEYSTORE`, `BUDGETPILOT_KEY_ALIAS`,
+`BUDGETPILOT_KEYSTORE_PASSWORD` und `BUDGETPILOT_KEY_PASSWORD` übergeben; ohne
+sie bricht `build-release.ps1` sofort ab. Jeder spätere Release benötigt einen
+höheren `ApplicationVersion`-Wert — das ergibt sich automatisch aus der
+Commit-Anzahl, setzt aber die vollständige Git-Historie voraus.
+
+Ablauf für ein Update des geschlossenen Tests:
+
+1. `build-release.ps1` ausführen → `androidNet/artifacts/*.aab`
+2. Play Console → Test and release → Testing → Closed testing → Alpha →
+   „Create new release“ → AAB hochladen
+3. Release-Notizen auf Deutsch pflegen, dann „Save“ → „Review release“ →
+   „Start rollout to Closed testing“
 
 ## 6. Mögliche Kontosperre vor Produktion
 
