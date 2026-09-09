@@ -52,7 +52,7 @@ else
             <div class="payment-list">
                 @foreach (var occurrence in openOccurrences.Take(6))
                 {
-                    <OccurrenceRow Occurrence="occurrence" Today="today" Resolved="ReloadOccurrencesAsync" />
+                    <OccurrenceRow @key="occurrence.OccurrenceKey" Occurrence="occurrence" Today="today" Resolved="ReloadOccurrencesAsync" />
                 }
                 @if (openOccurrences.Count > 6)
                 {
@@ -60,7 +60,7 @@ else
                         <summary>Weitere @(openOccurrences.Count - 6) Zahlungen anzeigen</summary>
                         @foreach (var occurrence in openOccurrences.Skip(6))
                         {
-                            <OccurrenceRow Occurrence="occurrence" Today="today" Resolved="ReloadOccurrencesAsync" />
+                            <OccurrenceRow @key="occurrence.OccurrenceKey" Occurrence="occurrence" Today="today" Resolved="ReloadOccurrencesAsync" />
                         }
                     </details>
                 }
@@ -81,7 +81,7 @@ else
             <div class="resolved-list">
                 @foreach (var resolution in recentResolutions)
                 {
-                    <ResolvedOccurrenceRow Resolution="resolution" Changed="ReloadOccurrencesAsync" />
+                    <ResolvedOccurrenceRow @key="resolution.OccurrenceKey" Resolution="resolution" Changed="ReloadOccurrencesAsync" />
                 }
             </div>
         </section>

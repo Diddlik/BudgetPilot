@@ -91,6 +91,7 @@
         try
         {
             await action();
+            Close();
             await Resolved.InvokeAsync();
         }
         catch (Exception ex)
