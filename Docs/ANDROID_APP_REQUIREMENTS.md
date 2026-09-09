@@ -1,7 +1,7 @@
 # BudgetPilot Android-App — Anforderungen & Vorgehen
 
-Status: Zwei parallele Phase-1-Ansätze · Quelle der Wahrheit für die
-Android-Begleit-Apps, die mit einer selbst-gehosteten BudgetPilot-Instanz (.NET 8 /
+Status: `androidNet/` ist der einzige fortgeführte Android-Client · Quelle der Wahrheit für die
+Android-Begleit-App, die mit einer selbst-gehosteten BudgetPilot-Instanz (.NET 8 /
 Blazor + ASP.NET Core Identity) kommunizieren. Code/Bezeichner Englisch,
 UI-Text & Specs Deutsch, Geld `decimal`, Geschäftsdaten als Datum (`dd.MM.yyyy`,
 Locale `de-DE`).
@@ -10,15 +10,16 @@ Locale `de-DE`).
 
 ## 1. Ziel & Umfang
 
-Es entstehen zwei bewusst getrennte Android-Phase-1-Ansätze, damit sie parallel
-bewertet werden können, ohne sich im selben Projektordner zu überschreiben:
+Die anfänglich getrennten Ansätze wurden verglichen. Die Produktentwicklung wird
+ausschließlich mit .NET MAUI fortgeführt:
 
-- `android/` — Kotlin / Jetpack Compose Ansatz, aktuell von Claude Code betreut.
-- `androidNet/` — .NET MAUI Blazor Hybrid Ansatz, aktuell von Codex betreut.
+- `androidNet/` — aktiver .NET MAUI Blazor Hybrid Client.
+- `android/` — eingefrorener Kotlin/Jetpack-Compose-Prototyp; keine neuen Features,
+  API-Paritätsänderungen, Builds oder Releases mehr.
 
-Beide Apps sind **Clients**. Fachliche Logik wie Projektion, Versionierung,
+Die aktive App ist ein **Client**. Fachliche Logik wie Projektion, Versionierung,
 Validierung und Audit bleibt serverseitig in Application/Domain bzw. hinter der
-bestehenden JSON-API. Die mobilen Apps rufen diese API auf und halten nur
+bestehenden JSON-API. Die mobile App ruft diese API auf und hält nur
 Client-Zustand wie Instanz-URL und Token lokal.
 
 **Nicht-Ziele für Phase 1:** keine eigene lokale Budgetlogik, kein Offline-Sync,
@@ -28,16 +29,14 @@ kein eigener Server, keine Zahlungsabwicklung/echtes Geld.
 
 ## 2. Technologieentscheidungen
 
-### Kotlin-Ansatz (`android/`)
+### Historischer Kotlin-Prototyp (`android/`)
 
-- Kotlin, Jetpack Compose, Material 3.
-- Hilt, Retrofit/OkHttp, kotlinx.serialization.
-- Eigenständiges Gradle-Projekt; nicht Teil von `BudgetPilot.sln`.
-- In Android Studio den Ordner `android/` öffnen.
+- Bleibt als Referenz im Repository, wird aber nicht weiterentwickelt.
+- Neue Anforderungen und API-Verträge gelten nur für `androidNet/`.
 
-### .NET-Ansatz (`androidNet/`)
+### Aktiver .NET-Client (`androidNet/`)
 
-Für den .NET-Vergleich gilt:
+Festgelegt ist:
 
 ```text
 .NET MAUI Blazor Hybrid
@@ -47,7 +46,7 @@ Konkrete Ableitung:
 
 - Projektordner: `androidNet/`.
 - Projektdatei: `androidNet/BudgetPilot.Mobile.csproj`.
-- Target: `net8.0-android`, min-SDK 26.
+- Target: `net10.0-android36.1`, min-SDK 26.
 - UI: Blazor Hybrid im `BlazorWebView`.
 - Wiederverwendung: ProjectReference auf `BudgetPilot.Application` für DTOs und
   transitiv `BudgetPilot.Domain` für Enums.
@@ -68,11 +67,11 @@ Der benötigte Backend-Stand ist vorhanden:
   ausgegeben.
 - Swagger/OpenAPI ist in Development unter `/swagger` verfügbar.
 
-Die Web-UI nutzt weiter Cookies; Android-Clients nutzen Bearer-Token.
+Die Web-UI nutzt weiter Cookies; `androidNet` nutzt Bearer-Token.
 
 ---
 
-## 4. Gemeinsame Phase-1-Anforderungen
+## 4. Anforderungen an `androidNet`
 
 - **REQ-P1-1 Instanz-Setup.** Beim ersten Start gibt der Nutzer die Basis-URL ein.
   HTTPS ist Pflicht; HTTP ist nur für lokale Emulator-Tests gegen `10.0.2.2` oder
@@ -90,6 +89,12 @@ Die Web-UI nutzt weiter Cookies; Android-Clients nutzen Bearer-Token.
 - **REQ-P1-7 Lokalisierung.** Deutsche UI-Texte, EUR-Formatierung und `de-DE`.
 - **REQ-P1-8 Theming.** An den Web-Prototyp angelehnt: Akzent `#C2410C`, ruhige
   BudgetPilot-Farbwelt.
+- **REQ-P1-9 Haushaltszeit.** Aktueller Tag und Monat kommen aus
+  `/api/v1/settings/household`, nicht aus der Gerätezeitzone. `androidNet` kann
+  die gemeinsame IANA-Zeitzone ändern.
+- **REQ-P1-10 Einfache Positionserfassung.** Die sechs Kernangaben sind direkt
+  sichtbar, optionale Angaben bleiben eingeklappt. Vor dem Speichern zeigt die
+  App die einmalige beziehungsweise die nächsten drei geplanten Zahlungen.
 
 ---
 
@@ -105,23 +110,17 @@ Die Web-UI nutzt weiter Cookies; Android-Clients nutzen Bearer-Token.
 
 ## 6. Build-Hinweise
 
-Kotlin-Ansatz:
-
-```bash
-cd android
-# In Android Studio öffnen oder per Gradle bauen, sobald Wrapper/SDK verfügbar sind.
-```
-
 .NET-MAUI-Ansatz:
 
 ```bash
 cd androidNet
 dotnet workload restore
-dotnet build BudgetPilot.Mobile.csproj -f net8.0-android
+dotnet build BudgetPilot.Mobile.csproj -f net10.0-android36.1
 ```
 
-Beide Android-Projekte bleiben außerhalb von `BudgetPilot.sln` und werden nicht
-vom normalen .NET/Docker-CI-Build erzwungen.
+Der aktive Android-Client bleibt außerhalb von `BudgetPilot.sln` und wird nicht
+vom normalen .NET/Docker-CI-Build erzwungen. Der Kotlin-Prototyp besitzt kein
+Build- oder Paritäts-Gate mehr.
 
 ---
 
@@ -129,14 +128,24 @@ vom normalen .NET/Docker-CI-Build erzwungen.
 
 1. **P0 — Backend-API.** Erledigt: Token-Endpoints, Bearer-geschützte `/api/v1`,
    ProblemDetails, OpenAPI.
-2. **P1 — App-Grundgerüste vergleichen.** Kotlin in `android/`, .NET MAUI in
-   `androidNet/`: Setup, Login, Token-Refresh, Dashboard-Lesepfad.
+2. **P1 — App-Grundgerüste vergleichen.** Abgeschlossen; `androidNet/` wurde als
+   einziger fortgeführter Client ausgewählt. `android/` bleibt als eingefrorener Prototyp.
 3. **P2 — Lesepfade erweitern.** Im `androidNet/`-Track erledigt:
    Monats-/Jahres-/Mehrjahresübersicht, Positionen, Kategorien und
-   Aktivitätsprotokoll.
+   Aktivitätsprotokoll. Der Client zeigt außerdem die serverseitig
+   berechneten offenen Zahlungen; verpasste Monate bleiben bis zur Auflösung sichtbar.
+   Der Dashboard-Lesepfad zeigt Plan, Ist und Abweichung aus den geschützten
+   `/api/v1/comparisons/monthly`- und `/api/v1/comparisons/yearly`-Verträgen.
 4. **P3 — Schreibpfad.** Im `androidNet/`-Track erledigt:
    Positionen/Versionen anlegen und korrigieren, Status ändern/löschen sowie
-   Kategorien anlegen, umbenennen und deaktivieren.
+   Kategorien anlegen, umbenennen und deaktivieren. Web und `androidNet`
+   können offene Fälligkeiten mit vorausgefülltem oder angepasstem Betrag/Datum
+   bestätigen sowie nach Rückfrage als entfallen markieren. Bearbeitete
+   Fälligkeiten bleiben sichtbar, können korrigiert und sicher wieder geöffnet werden.
+   Beide aktiven Oberflächen bieten außerdem eine prominente Schnellausgabe: Betrag und
+   Kategorie genügen, Budgetposition und Notiz bleiben optional. Eine beim Öffnen
+   erzeugte Request-ID wird bei Netzwerkfehlern wiederverwendet und verhindert
+   Doppelbuchungen durch Doppeltipp oder erneutes Senden.
 5. **P4 — Mobilreife.** Im `androidNet/`-Track erledigt: Offline-Lese-Cache,
    optionale lokale PIN-Sperre mit Android-Biometrie und PIN-Fallback,
    vollständiger Settings-Bereich, robuste Fehlerzustände, Accessibility-Basis

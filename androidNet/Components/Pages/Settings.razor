@@ -4,6 +4,7 @@
 @inject MobilePreferences MobilePreferences
 @inject AppSession Session
 @inject OfflineCache Cache
+@inject BudgetPilotApiClient Api
 @inject NavigationManager Navigation
 
 <section class="dashboard-screen settings-screen">
@@ -76,6 +77,23 @@
         </div>
     </section>
 
+    @if (householdSettings is not null)
+    {
+        <section class="settings-group" aria-labelledby="household-time-heading">
+            <div class="settings-heading"><span class="settings-symbol" aria-hidden="true">◷</span><div><h2 id="household-time-heading">Haushaltszeit</h2><p>Gemeinsamer Tages- und Monatswechsel</p></div></div>
+            <div class="settings-card settings-form">
+                <label>Zeitzone<select class="field" @bind="householdTimeZoneId">
+                    @foreach (var zone in householdSettings.AvailableTimeZones)
+                    {
+                        <option value="@zone.Id">@zone.DisplayName · @zone.Id</option>
+                    }
+                </select></label>
+                <p class="hint compact">Heute ist für den Haushalt der <strong>@householdSettings.Today.ToString("dd.MM.yyyy")</strong>. Europe/Berlin berücksichtigt die Sommerzeit automatisch.</p>
+                <div class="form-actions"><button class="button primary" @onclick="SaveHouseholdTimeAsync">Zeitzone speichern</button></div>
+            </div>
+        </section>
+    }
+
     <section class="settings-group" aria-labelledby="connection-heading">
         <div class="settings-heading"><span class="settings-symbol" aria-hidden="true">◎</span><div><h2 id="connection-heading">Verbindung</h2><p>Selbst gehostete BudgetPilot-Instanz</p></div></div>
         <form class="settings-card settings-form" @onsubmit="SaveInstanceAsync" @onsubmit:preventDefault="true">
@@ -116,6 +134,8 @@
     private MobileStartPage startPage;
     private string appVersion = string.Empty;
     private string appBuild = string.Empty;
+    private HouseholdSettingsDto? householdSettings;
+    private string householdTimeZoneId = string.Empty;
 
     private string BiometricAvailabilityLabel => biometricAvailability switch
     {
@@ -140,6 +160,30 @@
         startPage = MobilePreferences.StartPage;
         appVersion = AppInfo.Current.VersionString;
         appBuild = AppInfo.Current.BuildString;
+        if (Session.IsSignedIn)
+        {
+            try
+            {
+                householdSettings = await Api.GetHouseholdSettingsAsync();
+                householdTimeZoneId = householdSettings.TimeZoneId;
+            }
+            catch (Exception ex)
+            {
+                error = ex.Message;
+            }
+        }
+    }
+
+    private async Task SaveHouseholdTimeAsync()
+    {
+        ClearMessages();
+        try
+        {
+            householdSettings = await Api.UpdateHouseholdSettingsAsync(new UpdateHouseholdSettingsRequest(householdTimeZoneId));
+            householdTimeZoneId = householdSettings.TimeZoneId;
+            success = "Die Haushalts-Zeitzone wurde gespeichert.";
+        }
+        catch (Exception ex) { error = ex.Message; }
     }
 
     private async Task SavePinAsync()

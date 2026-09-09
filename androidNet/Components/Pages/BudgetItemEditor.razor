@@ -41,21 +41,18 @@
             </div>
 
             <label>
-                Name
-                <input class="field" required maxlength="160" autocomplete="off" @bind="name" />
+                Wofür ist diese Position?
+                <input class="field" required maxlength="160" autocomplete="off" placeholder="z. B. Miete oder Gehalt" @bind="name" />
             </label>
-            <label>
-                Beschreibung
-                <textarea class="field textarea" rows="3" maxlength="1000" @bind="description"></textarea>
-            </label>
+            <div class="type-choice" aria-label="Art der Position">
+                <button type="button" class="type-option expense @(type == BudgetItemType.Expense ? "selected" : null)" aria-pressed="@(type == BudgetItemType.Expense)" @onclick="() => type = BudgetItemType.Expense">
+                    <span aria-hidden="true">−</span><strong>Ausgabe</strong><small>Geld geht ab</small>
+                </button>
+                <button type="button" class="type-option income @(type == BudgetItemType.Income ? "selected" : null)" aria-pressed="@(type == BudgetItemType.Income)" @onclick="() => type = BudgetItemType.Income">
+                    <span aria-hidden="true">+</span><strong>Einnahme</strong><small>Geld kommt hinzu</small>
+                </button>
+            </div>
             <div class="form-grid">
-                <label>
-                    Typ
-                    <select class="field" @bind="type">
-                        <option value="@BudgetItemType.Income">Einnahme</option>
-                        <option value="@BudgetItemType.Expense">Ausgabe</option>
-                    </select>
-                </label>
                 <label>
                     Kategorie
                     <select class="field" required @bind="categoryId">
@@ -67,10 +64,12 @@
                     </select>
                 </label>
             </div>
-            <label>
-                Zuständig (optional)
-                <input class="field" maxlength="120" autocomplete="off" @bind="owner" />
-            </label>
+
+            <details class="optional-fields">
+                <summary>Weitere Angaben <span>optional</span></summary>
+                <label>Beschreibung<textarea class="field textarea" rows="2" maxlength="1000" @bind="description"></textarea></label>
+                <label>Zuständig<input class="field" maxlength="120" autocomplete="off" placeholder="z. B. Gemeinsam" @bind="owner" /></label>
+            </details>
 
             @if (IsNew)
             {
@@ -90,20 +89,21 @@
             <section class="panel">
                 <div class="panel-header">
                     <div>
-                        <h2>Versionen</h2>
-                        <p class="hint compact">Finanzielle Änderungen bleiben historisch nachvollziehbar.</p>
+                        <h2>Planverlauf</h2>
+                        <p class="hint compact">Frühere Planstände bleiben nachvollziehbar.</p>
                     </div>
-                    <button class="small-action" @onclick="StartNewVersion">Neue Version</button>
+                    <button class="small-action" @onclick="StartNewVersion">Änderung planen</button>
                 </div>
 
                 @if (showVersionForm)
                 {
                     <form class="nested-form" @onsubmit="SaveVersionAsync" @onsubmit:preventDefault="true">
-                        <h3>@(editingVersionId is null ? "Neue Version ab Stichtag" : "Version korrigieren")</h3>
+                        <h3>@(editingVersionId is null ? "Plan ab Stichtag ändern" : "Historischen Zeitraum korrigieren")</h3>
+                        <p class="hint compact">@(editingVersionId is null ? "Frühere Monate bleiben unverändert." : "Diese Korrektur kann historische Auswertungen verändern.")</p>
                         <VersionFields Model="versionForm" ShowValidTo="@(editingVersionId is not null)" />
                         <div class="form-actions">
                             <button class="button secondary" type="button" @onclick="CancelVersion">Abbrechen</button>
-                            <button class="button primary" type="submit" disabled="@isSaving">Version speichern</button>
+                            <button class="button primary" type="submit" disabled="@isSaving">Plan speichern</button>
                         </div>
                     </form>
                 }
@@ -170,8 +170,11 @@
     private Guid? editingVersionId;
     private string? error;
     private string? success;
+    private DateOnly householdToday;
 
     private bool IsNew => Id == Guid.Empty;
+    private int? EffectivePaymentDay => versionForm.Frequency == BudgetFrequency.Once ? null : versionForm.PaymentDay;
+    private int? EffectivePaymentMonth => versionForm.Frequency == BudgetFrequency.Yearly ? versionForm.PaymentMonth : null;
 
     protected override async Task OnInitializedAsync()
     {
@@ -191,6 +194,7 @@
         error = null;
         try
         {
+            householdToday = (await Api.GetHouseholdSettingsAsync()).Today;
             categories = await Api.GetCategoriesAsync();
             if (!IsNew)
             {
@@ -200,6 +204,10 @@
                 owner = item.Owner;
                 type = item.Type;
                 categoryId = item.CategoryId;
+            }
+            else
+            {
+                versionForm.Reset(householdToday);
             }
         }
         catch (UnauthorizedAccessException)
@@ -231,8 +239,8 @@
                 ValidateVersion();
                 var created = await Api.CreateBudgetItemAsync(new CreateBudgetItemRequest(
                     name.Trim(), EmptyToNull(description), type, categoryId, versionForm.Amount,
-                    versionForm.Frequency, versionForm.ValidFrom, versionForm.PaymentDay,
-                    versionForm.PaymentMonth, EmptyToNull(versionForm.Note), EmptyToNull(owner)));
+                    versionForm.Frequency, versionForm.ValidFrom, EffectivePaymentDay,
+                    EffectivePaymentMonth, EmptyToNull(versionForm.Note), EmptyToNull(owner)));
                 Navigation.NavigateTo($"/budget-items/{created.Id}", replace: true);
                 return;
             }
@@ -246,7 +254,7 @@
     private void StartNewVersion()
     {
         editingVersionId = null;
-        versionForm.Reset(DateOnly.FromDateTime(DateTime.Today));
+        versionForm.Reset(householdToday);
         showVersionForm = true;
         success = null;
     }
@@ -283,20 +291,20 @@
             {
                 await Api.UpdateBudgetItemVersionAsync(Id, versionId, new UpdateVersionRequest(
                     versionForm.Amount, versionForm.Frequency, versionForm.ValidFrom,
-                    versionForm.PaymentDay, versionForm.PaymentMonth, EmptyToNull(versionForm.Note),
+                    EffectivePaymentDay, EffectivePaymentMonth, EmptyToNull(versionForm.Note),
                     versionForm.ValidTo));
             }
             else
             {
                 await Api.AddBudgetItemVersionAsync(Id, new CreateBudgetItemVersionRequest(
                     versionForm.Amount, versionForm.Frequency, versionForm.ValidFrom,
-                    versionForm.PaymentDay, versionForm.PaymentMonth, EmptyToNull(versionForm.Note)));
+                    EffectivePaymentDay, EffectivePaymentMonth, EmptyToNull(versionForm.Note)));
             }
 
             await LoadAsync();
             showVersionForm = false;
             editingVersionId = null;
-            success = "Version gespeichert.";
+            success = "Planänderung gespeichert.";
         });
     }
 

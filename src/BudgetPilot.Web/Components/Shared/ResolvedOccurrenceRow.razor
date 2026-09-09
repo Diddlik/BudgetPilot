@@ -1,0 +1,118 @@
+@inject IOccurrenceActionService Actions
+
+<article class="resolved-entry">
+    <div class="resolved-main">
+        <div>
+            <strong>@Resolution.BudgetItemName</strong>
+            <span>@Resolution.CategoryName · geplant @Resolution.PlannedDueDate.ToString("dd.MM.yyyy", Culture)</span>
+        </div>
+        <span class="pill @(Resolution.Kind == OccurrenceResolutionKind.Confirmed ? "income" : "muted")">@Status</span>
+        <strong class="numeric">@AmountLabel</strong>
+    </div>
+
+    @if (mode is null)
+    {
+        <div class="occurrence-actions">
+            @if (Resolution.Kind == OccurrenceResolutionKind.Confirmed)
+            {
+                <button class="button secondary compact" disabled="@busy" @onclick="() => mode = ActionMode.Correct">Korrigieren</button>
+            }
+            <button class="button secondary compact" disabled="@busy" @onclick="() => mode = ActionMode.Reopen">Wieder öffnen</button>
+        </div>
+    }
+    else if (mode == ActionMode.Correct)
+    {
+        <div class="occurrence-editor">
+            <label>Betrag<input class="field" type="number" min="0" step="0.01" @bind="amount" /></label>
+            <label>Bezahlt am<input class="field" type="date" @bind="actualDate" /></label>
+            <label class="wide">Notiz (optional)<input class="field" maxlength="500" @bind="note" /></label>
+            <div class="occurrence-actions wide">
+                <button class="button primary compact" disabled="@busy" @onclick="CorrectAsync">Korrektur speichern</button>
+                <button class="button secondary compact" disabled="@busy" @onclick="Close">Abbrechen</button>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="occurrence-editor">
+            <p class="wide muted">Die Bearbeitung wird zurückgenommen. Die Fälligkeit erscheint danach wieder unter „Offene Zahlungen“.</p>
+            <div class="occurrence-actions wide">
+                <button class="button danger compact" disabled="@busy" @onclick="ReopenAsync">Wirklich wieder öffnen</button>
+                <button class="button secondary compact" disabled="@busy" @onclick="Close">Abbrechen</button>
+            </div>
+        </div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(error))
+    {
+        <p class="validation-message">@error</p>
+    }
+</article>
+
+@code {
+    private static readonly CultureInfo Culture = CultureInfo.GetCultureInfo("de-DE");
+
+    [Parameter, EditorRequired] public OccurrenceResolutionDto Resolution { get; set; } = null!;
+    [Parameter] public EventCallback Changed { get; set; }
+
+    private ActionMode? mode;
+    private decimal amount;
+    private DateOnly actualDate;
+    private string? note;
+    private bool busy;
+    private string? error;
+
+    protected override void OnParametersSet()
+    {
+        if (mode is null)
+        {
+            amount = Resolution.ActualAmount ?? Resolution.PlannedAmount;
+            actualDate = Resolution.ActualDate ?? Resolution.PlannedDueDate;
+            note = Resolution.Note;
+        }
+    }
+
+    private string Status => Resolution.Kind == OccurrenceResolutionKind.Confirmed ? "Bezahlt" : "Entfallen";
+    private string AmountLabel => Resolution.Kind == OccurrenceResolutionKind.Confirmed
+        ? Money(Resolution.ActualAmount ?? 0m)
+        : "–";
+
+    private async Task CorrectAsync() => await ExecuteAsync(async () =>
+    {
+        await Actions.CorrectAsync(
+            Resolution.BudgetItemId,
+            Resolution.PlannedDueDate,
+            new CorrectOccurrenceRequest(amount, actualDate, note));
+    });
+
+    private async Task ReopenAsync() => await ExecuteAsync(() =>
+        Actions.ReopenAsync(Resolution.BudgetItemId, Resolution.PlannedDueDate));
+
+    private async Task ExecuteAsync(Func<Task> action)
+    {
+        busy = true;
+        error = null;
+        try
+        {
+            await action();
+            await Changed.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+
+    private void Close()
+    {
+        mode = null;
+        error = null;
+    }
+
+    private static string Money(decimal value) => value.ToString("C", Culture);
+    private enum ActionMode { Correct, Reopen }
+}

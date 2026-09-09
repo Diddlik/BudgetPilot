@@ -1,3 +1,4 @@
+using BudgetPilot.Application.Abstractions;
 using BudgetPilot.Application.Requests;
 using BudgetPilot.Application.Services;
 using BudgetPilot.Application.Tests.Fakes;
@@ -19,7 +20,8 @@ public sealed class BudgetItemServiceTests
             new FakeBudgetItemRepository(store),
             new FakeCategoryRepository(store),
             new FakeUnitOfWork(store),
-            new NoopAuditLog());
+            new NoopAuditLog(),
+            new FixedHouseholdSettingsService(new DateOnly(2026, 9, 9)));
         return (svc, store, cat);
     }
 
@@ -159,9 +161,11 @@ public sealed class BudgetItemServiceTests
 
         await svc.DeactivateAsync(created.Id);
         store.Items.Single().IsActive.Should().BeFalse();
+        store.Items.Single().DeactivatedOn.Should().Be(new DateOnly(2026, 9, 9));
 
         await svc.ReactivateAsync(created.Id);
         store.Items.Single().IsActive.Should().BeTrue();
+        store.Items.Single().DeactivatedOn.Should().BeNull();
     }
 
     [Fact]
@@ -197,5 +201,15 @@ public sealed class BudgetItemServiceTests
         var dto = all.Single();
         dto.Versions[0].ValidFrom.Should().BeAfter(dto.Versions[1].ValidFrom);
         dto.Versions[0].IsCurrent.Should().BeTrue();
+    }
+
+    private sealed class FixedHouseholdSettingsService(DateOnly today) : IHouseholdSettingsService
+    {
+        public Task<DateOnly> GetTodayAsync(CancellationToken ct = default) => Task.FromResult(today);
+        public Task<BudgetPilot.Application.Dtos.HouseholdSettingsDto> GetAsync(CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<BudgetPilot.Application.Dtos.HouseholdSettingsDto> UpdateTimeZoneAsync(
+            string timeZoneId,
+            CancellationToken ct = default) => throw new NotSupportedException();
     }
 }

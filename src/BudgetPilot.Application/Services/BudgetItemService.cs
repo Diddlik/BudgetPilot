@@ -22,13 +22,20 @@ public sealed class BudgetItemService : IBudgetItemService
     private readonly ICategoryRepository _categories;
     private readonly IUnitOfWork _uow;
     private readonly IAuditLog _audit;
+    private readonly IHouseholdSettingsService _household;
 
-    public BudgetItemService(IBudgetItemRepository items, ICategoryRepository categories, IUnitOfWork uow, IAuditLog audit)
+    public BudgetItemService(
+        IBudgetItemRepository items,
+        ICategoryRepository categories,
+        IUnitOfWork uow,
+        IAuditLog audit,
+        IHouseholdSettingsService household)
     {
         _items = items;
         _categories = categories;
         _uow = uow;
         _audit = audit;
+        _household = household;
     }
 
     private static string Money(decimal value) => value.ToString("C", De);
@@ -340,6 +347,7 @@ public sealed class BudgetItemService : IBudgetItemService
     {
         var item = await GetItemOrThrowAsync(id, ct).ConfigureAwait(false);
         item.IsActive = false;
+        item.DeactivatedOn ??= await _household.GetTodayAsync(ct).ConfigureAwait(false);
         item.UpdatedAt = DateTime.UtcNow;
         _items.Update(item);
         await _uow.SaveChangesAsync(ct).ConfigureAwait(false);
@@ -352,6 +360,7 @@ public sealed class BudgetItemService : IBudgetItemService
     {
         var item = await GetItemOrThrowAsync(id, ct).ConfigureAwait(false);
         item.IsActive = true;
+        item.DeactivatedOn = null;
         item.UpdatedAt = DateTime.UtcNow;
         _items.Update(item);
         await _uow.SaveChangesAsync(ct).ConfigureAwait(false);

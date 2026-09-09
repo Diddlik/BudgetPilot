@@ -1,3 +1,5 @@
+using BudgetPilot.Domain.Enums;
+
 namespace BudgetPilot.Mobile.Services;
 
 public static class BudgetItemInputValidator
@@ -24,11 +26,11 @@ public static class BudgetItemInputValidator
         {
             throw new InvalidOperationException("„Gültig bis“ darf nicht vor „Gültig ab“ liegen.");
         }
-        if (model.PaymentDay is < 1 or > 31)
+        if (model.Frequency != BudgetFrequency.Once && model.PaymentDay is < 1 or > 31)
         {
             throw new InvalidOperationException("Der Zahlungstag muss zwischen 1 und 31 liegen.");
         }
-        if (model.PaymentMonth is < 1 or > 12)
+        if (model.Frequency == BudgetFrequency.Yearly && model.PaymentMonth is < 1 or > 12)
         {
             throw new InvalidOperationException("Der Zahlungsmonat muss zwischen 1 und 12 liegen.");
         }

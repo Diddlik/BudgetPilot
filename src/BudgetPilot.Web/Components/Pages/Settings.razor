@@ -1,0 +1,79 @@
+@page "/einstellungen"
+@rendermode InteractiveServer
+@using BudgetPilot.Domain.Exceptions
+@inject IHouseholdSettingsService HouseholdSettings
+
+<PageTitle>Einstellungen · BudgetPilot</PageTitle>
+
+<header class="page-header">
+    <div>
+        <p class="eyebrow">Haushalt</p>
+        <h1>Einstellungen</h1>
+    </div>
+</header>
+
+@if (settings is null)
+{
+    <p>Lade Einstellungen ...</p>
+}
+else
+{
+    @if (error is not null)
+    {
+        <div class="alert" role="alert">@error</div>
+    }
+    @if (info is not null)
+    {
+        <div class="alert success" role="status">@info</div>
+    }
+
+    <section class="panel">
+        <header class="panel-header">
+            <div>
+                <h2>Haushaltszeit</h2>
+                <p class="hint">Bestimmt, wann für BudgetPilot ein neuer Tag und Monat beginnt.</p>
+            </div>
+            <span class="date-chip">Heute: @settings.Today.ToString("dd.MM.yyyy")</span>
+        </header>
+        <div class="inline-form">
+            <label>Zeitzone
+                <select class="field" @bind="selectedTimeZoneId">
+                    @foreach (var zone in settings.AvailableTimeZones)
+                    {
+                        <option value="@zone.Id">@zone.DisplayName · @zone.Id</option>
+                    }
+                </select>
+            </label>
+            <button class="button primary" @onclick="SaveAsync">Speichern</button>
+        </div>
+        <p class="hint">Für einen Haushalt in Deutschland ist <strong>Europe/Berlin</strong> richtig – inklusive automatischer Sommerzeit.</p>
+    </section>
+}
+
+@code {
+    private HouseholdSettingsDto? settings;
+    private string selectedTimeZoneId = string.Empty;
+    private string? error;
+    private string? info;
+
+    protected override async Task OnInitializedAsync()
+    {
+        settings = await HouseholdSettings.GetAsync();
+        selectedTimeZoneId = settings.TimeZoneId;
+    }
+
+    private async Task SaveAsync()
+    {
+        error = info = null;
+        try
+        {
+            settings = await HouseholdSettings.UpdateTimeZoneAsync(selectedTimeZoneId);
+            selectedTimeZoneId = settings.TimeZoneId;
+            info = "Die Haushalts-Zeitzone wurde gespeichert.";
+        }
+        catch (DomainException ex)
+        {
+            error = ex.Message;
+        }
+    }
+}

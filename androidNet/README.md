@@ -1,8 +1,9 @@
 # BudgetPilot — Android .NET App
 
 Installierbare Android-Begleit-App als **.NET MAUI Blazor Hybrid App**. Dieser
-Ansatz lebt bewusst in `androidNet/`, damit er nicht mit dem parallelen
-Kotlin-/Jetpack-Compose-Ansatz in `../android/` kollidiert.
+`androidNet/` ist der einzige fortgeführte Android-Client. Der frühere
+Kotlin-/Jetpack-Compose-Ansatz in `../android/` bleibt nur als eingefrorener
+Prototyp im Repository.
 
 Die App ist ein Client für eine selbst-gehostete BudgetPilot-Instanz und spricht
 mit der bestehenden JSON-API (`/api/auth` + `/api/v1`). Fachliche Logik wie

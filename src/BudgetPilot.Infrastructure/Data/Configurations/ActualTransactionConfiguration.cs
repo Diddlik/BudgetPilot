@@ -34,6 +34,14 @@ public class ActualTransactionConfiguration : IEntityTypeConfiguration<ActualTra
             .IsRequired()
             .HasConversion(dateOnlyConverter);
 
+        builder.Property(t => t.PlannedDueDate)
+            .HasConversion(
+                d => d.HasValue ? d.Value.ToString("yyyy-MM-dd") : null,
+                s => s == null ? null : DateOnly.ParseExact(s, "yyyy-MM-dd"));
+
+        builder.Property(t => t.OccurrenceKey).HasMaxLength(80);
+        builder.HasIndex(t => t.OccurrenceKey).IsUnique();
+
         builder.Property(t => t.Description)
             .HasMaxLength(500);
 

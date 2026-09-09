@@ -19,6 +19,7 @@ public class BudgetItem
     public Guid CategoryId { get; set; }
     public Category Category { get; set; } = null!;
     public bool IsActive { get; set; } = true;
+    public DateOnly? DeactivatedOn { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
     public List<BudgetItemVersion> Versions { get; set; } = new();

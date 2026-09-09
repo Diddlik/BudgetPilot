@@ -1,6 +1,8 @@
 @page "/monatsuebersicht"
 @rendermode InteractiveServer
 @inject IBudgetProjectionService Projections
+@inject IHouseholdSettingsService HouseholdSettings
+@inject IPlanActualComparisonService Comparisons
 
 <PageTitle>Monatsübersicht · BudgetPilot</PageTitle>
 
@@ -28,6 +30,11 @@
 }
 else
 {
+    @if (comparison is not null)
+    {
+        <PlanActualSummary Comparison="comparison" />
+    }
+
     <section class="kpi-grid">
         <article class="kpi-card income"><span>Einnahmen</span><strong>@Money(projection.TotalIncome)</strong></article>
         <article class="kpi-card expense"><span>Ausgaben</span><strong>@Money(projection.TotalExpense)</strong></article>
@@ -85,18 +92,25 @@ else
 
 @code {
     private readonly CultureInfo culture = CultureInfo.GetCultureInfo("de-DE");
-    private DateOnly CurrentMonth { get; set; } = new(DateTime.Today.Year, DateTime.Today.Month, 1);
+    private DateOnly CurrentMonth { get; set; }
     private BudgetViewMode ViewMode { get; set; } = BudgetViewMode.Budget;
     private MonthlyBudgetProjectionDto? projection;
+    private PlanActualComparisonDto? comparison;
     private string ViewHint => ViewMode == BudgetViewMode.Budget
         ? "Budget-Sicht verteilt quartalsweise und jährliche Zahlungen gleichmäßig auf Monate."
         : "Cashflow-Sicht zeigt Zahlungen nur im tatsächlichen Fälligkeitsmonat.";
 
-    protected override Task OnInitializedAsync() => LoadAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        var today = await HouseholdSettings.GetTodayAsync();
+        CurrentMonth = new DateOnly(today.Year, today.Month, 1);
+        await LoadAsync();
+    }
 
     private async Task LoadAsync()
     {
         projection = await Projections.GetMonthlyProjectionAsync(CurrentMonth.Year, CurrentMonth.Month, ViewMode);
+        comparison = await Comparisons.GetMonthlyAsync(CurrentMonth.Year, CurrentMonth.Month);
     }
 
     private async Task PreviousMonth()

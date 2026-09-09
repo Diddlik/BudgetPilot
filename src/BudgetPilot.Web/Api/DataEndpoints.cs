@@ -97,11 +97,67 @@ public static class DataEndpoints
             => p.GetYearlyProjectionAsync(year, mode, ct));
         v1.MapGet("/projections/multi-year", (int from, int to, BudgetViewMode mode, IBudgetProjectionService p, CancellationToken ct)
             => p.GetMultiYearSummaryAsync(from, to, mode, ct));
+        v1.MapGet("/comparisons/monthly", (int year, int month, IPlanActualComparisonService comparisons, CancellationToken ct)
+            => comparisons.GetMonthlyAsync(year, month, ct));
+        v1.MapGet("/comparisons/yearly", (int year, IPlanActualComparisonService comparisons, CancellationToken ct)
+            => comparisons.GetYearlyAsync(year, ct));
+        v1.MapPost("/actual-transactions/quick-expense", (
+            CreateQuickExpenseRequest request,
+            IQuickExpenseService expenses,
+            CancellationToken ct) => expenses.CreateAsync(request, ct));
         v1.MapGet("/budget-items/{id:guid}/schedule", (Guid id, int from, int to, IBudgetProjectionService p, CancellationToken ct)
             => p.GetPaymentScheduleAsync(id, from, to, ct));
 
+        // ── Offene Zahlungen ───────────────────────────────────────────
+        v1.MapGet("/occurrences/open", async (
+            DateOnly? from,
+            DateOnly? to,
+            IHouseholdSettingsService household,
+            IPlannedOccurrenceService occurrences,
+            CancellationToken ct) =>
+        {
+            var today = await household.GetTodayAsync(ct);
+            return await occurrences.GetOpenAsync(from, to ?? today.AddMonths(1), ct);
+        });
+        v1.MapPost("/occurrences/{budgetItemId:guid}/{plannedDueDate}/confirm", (
+            Guid budgetItemId,
+            DateOnly plannedDueDate,
+            ConfirmOccurrenceRequest request,
+            IOccurrenceActionService actions,
+            CancellationToken ct) => actions.ConfirmAsync(budgetItemId, plannedDueDate, request, ct));
+        v1.MapPost("/occurrences/{budgetItemId:guid}/{plannedDueDate}/skip", (
+            Guid budgetItemId,
+            DateOnly plannedDueDate,
+            SkipOccurrenceRequest request,
+            IOccurrenceActionService actions,
+            CancellationToken ct) => actions.SkipAsync(budgetItemId, plannedDueDate, request, ct));
+        v1.MapGet("/occurrences/resolved", (
+            int? max,
+            IOccurrenceActionService actions,
+            CancellationToken ct) => actions.GetRecentAsync(max ?? 20, ct));
+        v1.MapPut("/occurrences/{budgetItemId:guid}/{plannedDueDate}/confirmed", (
+            Guid budgetItemId,
+            DateOnly plannedDueDate,
+            CorrectOccurrenceRequest request,
+            IOccurrenceActionService actions,
+            CancellationToken ct) => actions.CorrectAsync(budgetItemId, plannedDueDate, request, ct));
+        v1.MapPost("/occurrences/{budgetItemId:guid}/{plannedDueDate}/reopen", async (
+            Guid budgetItemId,
+            DateOnly plannedDueDate,
+            IOccurrenceActionService actions,
+            CancellationToken ct) =>
+        {
+            await actions.ReopenAsync(budgetItemId, plannedDueDate, ct);
+            return Results.NoContent();
+        });
+
         // ── Änderungsprotokoll ──────────────────────────────────────────
         v1.MapGet("/audit", (int? max, IAuditLog a, CancellationToken ct) => a.GetRecentAsync(max ?? 200, ct));
+
+        // ── Haushalt ───────────────────────────────────────────────────
+        v1.MapGet("/settings/household", (IHouseholdSettingsService s, CancellationToken ct) => s.GetAsync(ct));
+        v1.MapPut("/settings/household", (UpdateHouseholdSettingsRequest r, IHouseholdSettingsService s, CancellationToken ct)
+            => s.UpdateTimeZoneAsync(r.TimeZoneId, ct));
 
         return v1;
     }

@@ -44,6 +44,13 @@ namespace BudgetPilot.Infrastructure.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("OccurrenceKey")
+                        .HasMaxLength(80)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PlannedDueDate")
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("Type")
                         .HasColumnType("INTEGER");
 
@@ -54,6 +61,9 @@ namespace BudgetPilot.Infrastructure.Migrations
                     b.HasIndex("CategoryId");
 
                     b.HasIndex("Date");
+
+                    b.HasIndex("OccurrenceKey")
+                        .IsUnique();
 
                     b.ToTable("ActualTransactions");
                 });
@@ -113,6 +123,9 @@ namespace BudgetPilot.Infrastructure.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DeactivatedOn")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Description")
@@ -209,6 +222,85 @@ namespace BudgetPilot.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Categories");
+                });
+
+            modelBuilder.Entity("BudgetPilot.Domain.Entities.HouseholdSettings", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("TimeZoneId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("HouseholdSettings");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            TimeZoneId = "Europe/Berlin"
+                        });
+                });
+
+            modelBuilder.Entity("BudgetPilot.Domain.Entities.OccurrenceResolution", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("ActualTransactionId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("BudgetItemId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("BudgetItemName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CategoryName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("OccurrenceKey")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("PlannedAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PlannedDueDate")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActualTransactionId")
+                        .IsUnique();
+
+                    b.HasIndex("OccurrenceKey")
+                        .IsUnique();
+
+                    b.ToTable("OccurrenceResolutions");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
@@ -441,6 +533,16 @@ namespace BudgetPilot.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("BudgetItem");
+                });
+
+            modelBuilder.Entity("BudgetPilot.Domain.Entities.OccurrenceResolution", b =>
+                {
+                    b.HasOne("BudgetPilot.Domain.Entities.ActualTransaction", "ActualTransaction")
+                        .WithOne()
+                        .HasForeignKey("BudgetPilot.Domain.Entities.OccurrenceResolution", "ActualTransactionId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.Navigation("ActualTransaction");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>

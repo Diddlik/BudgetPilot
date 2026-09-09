@@ -32,21 +32,42 @@ public sealed class BudgetItemInputValidatorTests
     }
 
     [Theory]
-    [InlineData(-0.01, null, null)]
-    [InlineData(10, 0, null)]
-    [InlineData(10, 32, null)]
-    [InlineData(10, null, 0)]
-    [InlineData(10, null, 13)]
-    public void ValidateVersion_RejectsInvalidFinancialInputs(double amount, int? day, int? month)
+    [InlineData(-0.01, BudgetFrequency.Monthly, null, null)]
+    [InlineData(10, BudgetFrequency.Monthly, 0, null)]
+    [InlineData(10, BudgetFrequency.Monthly, 32, null)]
+    [InlineData(10, BudgetFrequency.Yearly, null, 0)]
+    [InlineData(10, BudgetFrequency.Yearly, null, 13)]
+    public void ValidateVersion_RejectsInvalidFinancialInputs(
+        double amount,
+        BudgetFrequency frequency,
+        int? day,
+        int? month)
     {
         var model = new VersionFormModel
         {
             Amount = (decimal)amount,
+            Frequency = frequency,
             PaymentDay = day,
             PaymentMonth = month
         };
 
         var act = () => BudgetItemInputValidator.ValidateVersion(model);
         act.Should().Throw<InvalidOperationException>();
+    }
+
+    [Fact]
+    public void ValidateVersion_IgnoresFieldsHiddenForFrequency()
+    {
+        var model = new VersionFormModel
+        {
+            Amount = 10m,
+            Frequency = BudgetFrequency.Once,
+            PaymentDay = 99,
+            PaymentMonth = 99
+        };
+
+        var act = () => BudgetItemInputValidator.ValidateVersion(model);
+
+        act.Should().NotThrow();
     }
 }

@@ -43,6 +43,8 @@ public static class UiText
         "BudgetItem" => "Position",
         "Category" => "Kategorie",
         "User" => "Benutzer",
+        "Occurrence" => "Fälligkeit",
+        "ActualTransaction" => "Buchung",
         _ => entityType
     };
 }

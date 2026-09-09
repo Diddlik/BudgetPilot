@@ -1,6 +1,10 @@
 @page "/"
 @rendermode InteractiveServer
 @inject IBudgetProjectionService Projections
+@inject IHouseholdSettingsService HouseholdSettings
+@inject IPlannedOccurrenceService Occurrences
+@inject IOccurrenceActionService Actions
+@inject IPlanActualComparisonService Comparisons
 
 <PageTitle>Dashboard · BudgetPilot</PageTitle>
 
@@ -23,20 +27,65 @@
 }
 else
 {
-    <section class="kpi-grid">
-        <article class="kpi-card income">
-            <span>Einnahmen</span>
-            <strong>@Money(DispIncome)</strong>
-        </article>
-        <article class="kpi-card expense">
-            <span>Ausgaben</span>
-            <strong>@Money(DispExpense)</strong>
-        </article>
-        <article class="kpi-card balance @(DispBalance >= 0 ? "positive" : "negative")">
-            <span>Saldo</span>
-            <strong>@Money(DispBalance)</strong>
-        </article>
+    <QuickExpenseButton Saved="ReloadOccurrencesAsync" />
+
+    @if (DisplayedComparison is { } comparison)
+    {
+        <PlanActualSummary Comparison="comparison" ShowCategories="false" />
+    }
+
+    <section class="panel occurrence-panel">
+        <header class="panel-header">
+            <div>
+                <p class="eyebrow">Nichts geht verloren</p>
+                <h2>Offene Zahlungen</h2>
+            </div>
+            <span>@openOccurrences.Count offen</span>
+        </header>
+
+        @if (openOccurrences.Count == 0)
+        {
+            <p class="muted">Alles im Blick – aktuell ist keine Zahlung offen.</p>
+        }
+        else
+        {
+            <div class="payment-list">
+                @foreach (var occurrence in openOccurrences.Take(6))
+                {
+                    <OccurrenceRow Occurrence="occurrence" Today="today" Resolved="ReloadOccurrencesAsync" />
+                }
+                @if (openOccurrences.Count > 6)
+                {
+                    <details class="occurrence-more">
+                        <summary>Weitere @(openOccurrences.Count - 6) Zahlungen anzeigen</summary>
+                        @foreach (var occurrence in openOccurrences.Skip(6))
+                        {
+                            <OccurrenceRow Occurrence="occurrence" Today="today" Resolved="ReloadOccurrencesAsync" />
+                        }
+                    </details>
+                }
+            </div>
+        }
     </section>
+
+    @if (recentResolutions.Count > 0)
+    {
+        <section class="panel resolved-panel">
+            <header class="panel-header">
+                <div>
+                    <p class="eyebrow">Sicher korrigierbar</p>
+                    <h2>Zuletzt bearbeitet</h2>
+                </div>
+                <span>@recentResolutions.Count Einträge</span>
+            </header>
+            <div class="resolved-list">
+                @foreach (var resolution in recentResolutions)
+                {
+                    <ResolvedOccurrenceRow Resolution="resolution" Changed="ReloadOccurrencesAsync" />
+                }
+            </div>
+        </section>
+    }
 
     <section class="dashboard-grid">
         <article class="panel">
@@ -96,9 +145,15 @@ else
     private MonthlyBudgetProjectionDto? month;
     private YearlyBudgetProjectionDto? year;
     private List<NextPayment> upcoming = [];
+    private IReadOnlyList<PlannedOccurrenceDto> openOccurrences = [];
+    private IReadOnlyList<OccurrenceResolutionDto> recentResolutions = [];
+    private PlanActualComparisonDto? monthComparison;
+    private PlanActualComparisonDto? yearComparison;
+    private DateOnly today;
     private string monthLabel = string.Empty;
     private string yearLabel = string.Empty;
     private bool yearScope; // false = aktueller Monat, true = aktuelles Jahr
+    private PlanActualComparisonDto? DisplayedComparison => yearScope ? yearComparison : monthComparison;
 
     // Anzeigewerte je nach Umschalter (Monat bzw. Jahr).
     private decimal DispIncome => yearScope ? (year?.TotalIncome ?? 0m) : (month?.TotalIncome ?? 0m);
@@ -110,12 +165,13 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        var today = DateOnly.FromDateTime(DateTime.Today);
+        today = await HouseholdSettings.GetTodayAsync();
         monthLabel = today.ToString("MMMM yyyy", culture);
         yearLabel = today.Year.ToString(culture);
 
         month = await Projections.GetMonthlyProjectionAsync(today.Year, today.Month, BudgetViewMode.Budget);
         year = await Projections.GetYearlyProjectionAsync(today.Year, BudgetViewMode.Budget);
+        await ReloadOccurrencesAsync();
 
         var payments = new List<NextPayment>();
         for (var offset = 0; offset < 12; offset++)
@@ -156,6 +212,14 @@ else
     }
 
     private string Money(decimal value) => value.ToString("C", culture);
+
+    private async Task ReloadOccurrencesAsync()
+    {
+        openOccurrences = await Occurrences.GetOpenAsync(null, today.AddMonths(1));
+        recentResolutions = await Actions.GetRecentAsync(10);
+        monthComparison = await Comparisons.GetMonthlyAsync(today.Year, today.Month);
+        yearComparison = await Comparisons.GetYearlyAsync(today.Year);
+    }
 
     private sealed record NextPayment(string Name, string Category, decimal Amount, DateOnly When);
 }

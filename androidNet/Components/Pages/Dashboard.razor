@@ -33,20 +33,62 @@
     }
     else if (projection is not null)
     {
-        <div class="kpi-grid">
-            <article class="kpi-card income">
-                <span>Einnahmen</span>
-                <strong>@Money(projection.TotalIncome)</strong>
-            </article>
-            <article class="kpi-card expense">
-                <span>Ausgaben</span>
-                <strong>@Money(projection.TotalExpense)</strong>
-            </article>
-            <article class="kpi-card balance @(projection.Balance >= 0 ? "positive" : "negative")">
-                <span>Saldo</span>
-                <strong>@Money(projection.Balance)</strong>
-            </article>
-        </div>
+        @if (comparison is not null)
+        {
+            <PlanActualSummary Comparison="comparison" />
+        }
+
+        <section class="panel">
+            <div class="panel-header">
+                <div>
+                    <p class="eyebrow">Nichts geht verloren</p>
+                    <h2>Offene Zahlungen</h2>
+                </div>
+                <span>@openOccurrences.Count offen</span>
+            </div>
+            @if (openOccurrences.Count == 0)
+            {
+                <p class="muted">Alles im Blick – aktuell ist keine Zahlung offen.</p>
+            }
+            else
+            {
+                <div class="line-list">
+                    @foreach (var occurrence in openOccurrences.Take(6))
+                    {
+                        <OccurrenceRow Occurrence="occurrence" Today="today" Resolved="ReloadOccurrencesAsync" />
+                    }
+                    @if (openOccurrences.Count > 6)
+                    {
+                        <details class="occurrence-more">
+                            <summary>Weitere @(openOccurrences.Count - 6) Zahlungen anzeigen</summary>
+                            @foreach (var occurrence in openOccurrences.Skip(6))
+                            {
+                                <OccurrenceRow Occurrence="occurrence" Today="today" Resolved="ReloadOccurrencesAsync" />
+                            }
+                        </details>
+                    }
+                </div>
+            }
+        </section>
+
+        @if (recentResolutions.Count > 0)
+        {
+            <section class="panel">
+                <div class="panel-header">
+                    <div>
+                        <p class="eyebrow">Sicher korrigierbar</p>
+                        <h2>Zuletzt bearbeitet</h2>
+                    </div>
+                    <span>@recentResolutions.Count Einträge</span>
+                </div>
+                <div class="resolved-list">
+                    @foreach (var resolution in recentResolutions)
+                    {
+                        <ResolvedOccurrenceRow Resolution="resolution" Changed="ReloadOccurrencesAsync" />
+                    }
+                </div>
+            </section>
+        }
 
         <section class="panel">
             <div class="panel-header">
@@ -103,11 +145,20 @@
     <AppNavigation />
 </section>
 
+@if (projection is not null)
+{
+    <QuickExpenseButton Saved="ReloadOccurrencesAsync" />
+}
+
 @code {
     private static readonly CultureInfo GermanCulture = CultureInfo.GetCultureInfo("de-DE");
 
     private MonthlyBudgetProjectionDto? projection;
-    private DateTime currentMonth = new(DateTime.Today.Year, DateTime.Today.Month, 1);
+    private PlanActualComparisonDto? comparison;
+    private List<PlannedOccurrenceDto> openOccurrences = [];
+    private List<OccurrenceResolutionDto> recentResolutions = [];
+    private DateOnly today;
+    private DateTime currentMonth;
     private BudgetViewMode viewMode;
     private bool isLoading = true;
     private string? error;
@@ -125,6 +176,24 @@
             return;
         }
 
+        try
+        {
+            today = (await Api.GetHouseholdSettingsAsync()).Today;
+            currentMonth = new DateTime(today.Year, today.Month, 1);
+            await ReloadOccurrencesAsync();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            await Session.ClearAsync();
+            Navigation.NavigateTo("/", replace: true);
+            return;
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+            isLoading = false;
+            return;
+        }
         await LoadProjectionAsync();
     }
 
@@ -136,6 +205,7 @@
         try
         {
             projection = await Api.GetMonthlyProjectionAsync(currentMonth.Year, currentMonth.Month, viewMode);
+            comparison = await Api.GetMonthlyComparisonAsync(currentMonth.Year, currentMonth.Month);
         }
         catch (UnauthorizedAccessException)
         {
@@ -190,6 +260,16 @@
     }
 
     private static string Money(decimal value) => value.ToString("C", GermanCulture);
+
+    private async Task ReloadOccurrencesAsync()
+    {
+        openOccurrences = await Api.GetOpenOccurrencesAsync();
+        recentResolutions = await Api.GetResolvedOccurrencesAsync();
+        if (currentMonth != default)
+        {
+            comparison = await Api.GetMonthlyComparisonAsync(currentMonth.Year, currentMonth.Month);
+        }
+    }
 
     private static string FrequencyLabel(BudgetFrequency frequency) => frequency switch
     {

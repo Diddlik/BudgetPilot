@@ -72,11 +72,35 @@ public sealed class BudgetPilotApiClient
         return await GetAsync<MonthlyBudgetProjectionDto>(relative, cancellationToken);
     }
 
+    public Task<PlanActualComparisonDto> GetMonthlyComparisonAsync(
+        int year,
+        int month,
+        CancellationToken cancellationToken = default) =>
+        GetAsync<PlanActualComparisonDto>(
+            $"/api/v1/comparisons/monthly?year={year}&month={month}",
+            cancellationToken);
+
+    public Task<PlanActualComparisonDto> GetYearlyComparisonAsync(
+        int year,
+        CancellationToken cancellationToken = default) =>
+        GetAsync<PlanActualComparisonDto>(
+            $"/api/v1/comparisons/yearly?year={year}",
+            cancellationToken);
+
     public Task<List<BudgetItemDto>> GetBudgetItemsAsync(CancellationToken cancellationToken = default) =>
         GetAsync<List<BudgetItemDto>>("/api/v1/budget-items", cancellationToken);
 
     public Task<List<CategoryDto>> GetCategoriesAsync(CancellationToken cancellationToken = default) =>
         GetAsync<List<CategoryDto>>("/api/v1/categories", cancellationToken);
+
+    public Task<ActualTransactionDto> CreateQuickExpenseAsync(
+        CreateQuickExpenseRequest request,
+        CancellationToken cancellationToken = default) =>
+        SendAsync<ActualTransactionDto>(
+            HttpMethod.Post,
+            "/api/v1/actual-transactions/quick-expense",
+            request,
+            cancellationToken);
 
     public Task<YearlyBudgetProjectionDto> GetYearlyProjectionAsync(
         int year,
@@ -99,6 +123,65 @@ public sealed class BudgetPilotApiClient
         int max = 100,
         CancellationToken cancellationToken = default) =>
         GetAsync<List<AuditEntryDto>>($"/api/v1/audit?max={max}", cancellationToken);
+
+    public Task<HouseholdSettingsDto> GetHouseholdSettingsAsync(CancellationToken cancellationToken = default) =>
+        GetAsync<HouseholdSettingsDto>("/api/v1/settings/household", cancellationToken);
+
+    public Task<List<PlannedOccurrenceDto>> GetOpenOccurrencesAsync(CancellationToken cancellationToken = default) =>
+        GetAsync<List<PlannedOccurrenceDto>>("/api/v1/occurrences/open", cancellationToken);
+
+    public Task<OccurrenceResolutionDto> ConfirmOccurrenceAsync(
+        Guid budgetItemId,
+        DateOnly plannedDueDate,
+        ConfirmOccurrenceRequest request,
+        CancellationToken cancellationToken = default) =>
+        SendAsync<OccurrenceResolutionDto>(
+            HttpMethod.Post,
+            $"/api/v1/occurrences/{budgetItemId:D}/{plannedDueDate:yyyy-MM-dd}/confirm",
+            request,
+            cancellationToken);
+
+    public Task<OccurrenceResolutionDto> SkipOccurrenceAsync(
+        Guid budgetItemId,
+        DateOnly plannedDueDate,
+        SkipOccurrenceRequest request,
+        CancellationToken cancellationToken = default) =>
+        SendAsync<OccurrenceResolutionDto>(
+            HttpMethod.Post,
+            $"/api/v1/occurrences/{budgetItemId:D}/{plannedDueDate:yyyy-MM-dd}/skip",
+            request,
+            cancellationToken);
+
+    public Task<List<OccurrenceResolutionDto>> GetResolvedOccurrencesAsync(
+        int max = 10,
+        CancellationToken cancellationToken = default) =>
+        GetAsync<List<OccurrenceResolutionDto>>($"/api/v1/occurrences/resolved?max={max}", cancellationToken);
+
+    public Task<OccurrenceResolutionDto> CorrectOccurrenceAsync(
+        Guid budgetItemId,
+        DateOnly plannedDueDate,
+        CorrectOccurrenceRequest request,
+        CancellationToken cancellationToken = default) =>
+        SendAsync<OccurrenceResolutionDto>(
+            HttpMethod.Put,
+            $"/api/v1/occurrences/{budgetItemId:D}/{plannedDueDate:yyyy-MM-dd}/confirmed",
+            request,
+            cancellationToken);
+
+    public Task ReopenOccurrenceAsync(
+        Guid budgetItemId,
+        DateOnly plannedDueDate,
+        CancellationToken cancellationToken = default) =>
+        SendAsync(
+            HttpMethod.Post,
+            $"/api/v1/occurrences/{budgetItemId:D}/{plannedDueDate:yyyy-MM-dd}/reopen",
+            null,
+            cancellationToken);
+
+    public Task<HouseholdSettingsDto> UpdateHouseholdSettingsAsync(
+        UpdateHouseholdSettingsRequest request,
+        CancellationToken cancellationToken = default) =>
+        SendAsync<HouseholdSettingsDto>(HttpMethod.Put, "/api/v1/settings/household", request, cancellationToken);
 
     public Task<BudgetItemDto> GetBudgetItemAsync(Guid id, CancellationToken cancellationToken = default) =>
         GetAsync<BudgetItemDto>($"/api/v1/budget-items/{id}", cancellationToken);

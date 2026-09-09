@@ -1,8 +1,12 @@
 # BudgetPilot — Android-App
 
+> **Archivierter Prototyp:** Dieser Kotlin/Jetpack-Compose-Client wird nicht mehr
+> weiterentwickelt. Neue Android-Features, API-Parität, Builds und Releases erfolgen
+> ausschließlich in [`androidNet/`](../androidNet/).
+
 Native Begleit-App (Kotlin / Jetpack Compose), die mit einer selbst-gehosteten
 BudgetPilot-Instanz über die JSON-API (`/api/auth` + `/api/v1`) kommuniziert.
-Dies ist das **P1-Grundgerüst** des Kotlin-/Jetpack-Compose-Ansatzes (siehe `../Docs/ANDROID_APP_REQUIREMENTS.md`). Der parallele .NET-MAUI-Ansatz lebt in `../androidNet/`.
+Dies ist der frühere **P1-Prototyp** des Kotlin-/Jetpack-Compose-Ansatzes.
 
 ## Stack
 - Kotlin, Jetpack Compose (Material 3), Navigation-Compose
@@ -35,11 +39,7 @@ Dies ist das **P1-Grundgerüst** des Kotlin-/Jetpack-Compose-Ansatzes (siehe `..
    freigegeben, siehe `res/xml/network_security_config.xml`).
 3. Login (Development): `admin@budgetpilot.local` / `ChangeMe!2026`.
 
-## Hinweise / nächste Schritte
+## Historische Hinweise
 - Geldbeträge werden im Gerüst als `Double` angezeigt; für korrekte Rundung
   später auf `BigDecimal`/String-Serialisierung umstellen.
-- Noch offen (P2/P3): Monats-/Jahres-/Mehrjahresübersicht, Positionen & Versionen
-  anlegen/korrigieren, Kategorien, Offline-Cache (Room), App-Lock, Tests, eigener
-  CI-Workflow für den Android-Build (getrennt vom .NET/Docker-Workflow).
-- Der API-Vertrag ist als OpenAPI unter `/swagger` der Instanz (Development)
-  verfügbar — daraus lassen sich die Retrofit-Interfaces erweitern.
+- Offene P2/P3-Punkte werden hier bewusst nicht mehr umgesetzt.

@@ -38,7 +38,7 @@ Datums- und Zahlenformate.
 - Private Anmeldung über ASP.NET Core Identity
 - Versionierte REST-API mit Bearer-Token-Authentifizierung
 - Installierbare Web-App (PWA-Grundgerüst)
-- Android-Clients für dieselbe selbst gehostete Instanz
+- Android-Client für dieselbe selbst gehostete Instanz
 
 ## Schnellstart
 
@@ -80,13 +80,13 @@ Die SQLite-Datenbank liegt im eingebundenen Verzeichnis `./data`.
 
 ## Android
 
-Das Repository enthält zwei bewusst getrennte Client-Ansätze:
+`androidNet/` ist der einzige fortgeführte Android-Client:
 
 - [`androidNet/`](androidNet/) — .NET MAUI Blazor Hybrid, der umfassendere
   Mobile-Client mit Lese-/Schreibpfaden, Offline-Cache, PIN/Biometrie und
   Release-Skripten.
-- [`android/`](android/) — Kotlin und Jetpack Compose als separater nativer
-  Client-Prototyp.
+- [`android/`](android/) — eingefrorener Kotlin/Jetpack-Compose-Prototyp; bleibt
+  nur als Referenz erhalten und erhält keine Features oder API-Paritätsupdates mehr.
 
 Der MAUI-Client verwendet ein eigenes .NET-10-SDK und Android API 36.1:
 

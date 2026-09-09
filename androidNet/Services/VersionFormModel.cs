@@ -7,7 +7,7 @@ public sealed class VersionFormModel
 {
     public decimal Amount { get; set; }
     public BudgetFrequency Frequency { get; set; } = BudgetFrequency.Monthly;
-    public DateOnly ValidFrom { get; set; } = DateOnly.FromDateTime(DateTime.Today);
+    public DateOnly ValidFrom { get; set; }
 
     /// <summary>Nur bei der Korrektur relevant; null = offen (wird serverseitig am Nachfolger geklemmt).</summary>
     public DateOnly? ValidTo { get; set; }

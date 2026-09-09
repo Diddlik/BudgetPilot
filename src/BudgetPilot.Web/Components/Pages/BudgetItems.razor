@@ -8,7 +8,7 @@
 
 <header class="page-header">
     <div>
-        <p class="eyebrow">Regeln & Versionen</p>
+        <p class="eyebrow">Wiederkehrende Planung</p>
         <h1>Budgetpositionen</h1>
     </div>
     <button class="button primary" @onclick="() => showForm = true">+ Neue Position</button>
@@ -68,7 +68,7 @@
                 </div>
                 <span class="pill @(item.IsActive ? "success" : "muted")">@(item.IsActive ? "Aktiv" : "Inaktiv")</span>
                 <span class="pill @(item.Type == BudgetItemType.Income ? "income" : "expense")">@UiText.TypeLabel(item.Type)</span>
-                <span>@item.Versions.Count Version@(item.Versions.Count == 1 ? "" : "en")</span>
+                <span>@(item.Versions.Count == 1 ? "1 Planstand" : $"{item.Versions.Count} Planstände")</span>
                 <strong class="numeric">@Money(version?.Amount ?? 0)</strong>
             </button>
         }

@@ -1,6 +1,8 @@
 @rendermode InteractiveServer
+@using BudgetPilot.Domain.Exceptions
 @inject IBudgetItemService Items
 @inject ICategoryService Categories
+@inject IHouseholdSettingsService HouseholdSettings
 
 <div class="modal-backdrop" @onmousedown="OnBackdropPointerDown" @onclick="OnBackdropClick">
     <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="budget-form-title"
@@ -15,26 +17,38 @@
 
         @if (!string.IsNullOrWhiteSpace(error))
         {
-            <div class="alert">@error</div>
+            <div class="alert" role="alert">@error</div>
         }
+
+        @if (ModeMessage is { } modeMessage)
+        {
+            <div class="form-context @(Mode == "EditVersion" ? "warning" : null)">@modeMessage</div>
+        }
+
+        <div class="type-choice" aria-label="Art der Position">
+            <button type="button" class="type-option expense @(Type == BudgetItemType.Expense ? "selected" : null)"
+                    disabled="@MetadataLocked" aria-pressed="@(Type == BudgetItemType.Expense)"
+                    @onclick="() => Type = BudgetItemType.Expense">
+                <span aria-hidden="true">−</span><strong>Ausgabe</strong><small>Geld geht vom Haushalt ab</small>
+            </button>
+            <button type="button" class="type-option income @(Type == BudgetItemType.Income ? "selected" : null)"
+                    disabled="@MetadataLocked" aria-pressed="@(Type == BudgetItemType.Income)"
+                    @onclick="() => Type = BudgetItemType.Income">
+                <span aria-hidden="true">+</span><strong>Einnahme</strong><small>Geld kommt zum Haushalt hinzu</small>
+            </button>
+        </div>
 
         <div class="form-grid">
             <label>
-                Name
-                <input class="field" @bind="Name" disabled="@MetadataLocked" />
-            </label>
-
-            <label>
-                Typ
-                <select class="field" @bind="Type" disabled="@MetadataLocked">
-                    <option value="@BudgetItemType.Expense">Ausgabe</option>
-                    <option value="@BudgetItemType.Income">Einnahme</option>
-                </select>
+                Wofür ist diese Position?
+                <input class="field" @bind="Name" disabled="@MetadataLocked" maxlength="160"
+                       autocomplete="off" placeholder="z. B. Miete oder Gehalt" />
             </label>
 
             <label>
                 Kategorie
                 <select class="field" @bind="CategoryId" disabled="@MetadataLocked">
+                    <option value="@Guid.Empty">Bitte auswählen</option>
                     @foreach (var category in activeCategories)
                     {
                         <option value="@category.Id">@category.Name</option>
@@ -43,22 +57,13 @@
             </label>
 
             <label>
-                Inhaber (optional)
-                <input class="field" list="owner-suggestions" placeholder="z. B. Mann, Frau, Gemeinsam" @bind="Owner" disabled="@MetadataLocked" />
-                <datalist id="owner-suggestions">
-                    <option value="Mann" />
-                    <option value="Frau" />
-                    <option value="Gemeinsam" />
-                </datalist>
-            </label>
-
-            <label>
-                Betrag (EUR)
+                Betrag
                 <input class="field numeric" inputmode="decimal" placeholder="0,00" @bind="AmountText" @bind:event="oninput" />
+                <span class="field-help">Euro pro Zahlung</span>
             </label>
 
             <label>
-                Frequenz
+                Wie oft?
                 <select class="field" @bind="Frequency">
                     <option value="@BudgetFrequency.Monthly">Monatlich</option>
                     <option value="@BudgetFrequency.Quarterly">Quartalsweise</option>
@@ -68,38 +73,74 @@
             </label>
 
             <label>
-                Gültig ab / Datum
+                @(Frequency == BudgetFrequency.Once ? "Zahlungsdatum" : "Erste geplante Zahlung")
                 <input class="field" type="date" value="@ValidFromText" @onchange="OnValidFromChanged" />
             </label>
 
             @if (Mode == "EditVersion")
             {
                 <label>
-                    Gültig bis (leer = offen)
+                    Zeitraum endet am (optional)
                     <input class="field" type="date" value="@ValidToText" @onchange="OnValidToChanged" />
-                    <span class="hint">Nachbarversionen werden automatisch auf den Vor-/Folgemonat verschoben.</span>
+                    <span class="hint">Nur für eine historische Korrektur.</span>
                 </label>
             }
-
-            @if (Frequency is BudgetFrequency.Yearly or BudgetFrequency.Quarterly)
-            {
-                <label>
-                    Zahlungsmonat
-                    <select class="field" @bind="PaymentMonthText">
-                        <option value="">aus Gültig ab</option>
-                        @for (var month = 1; month <= 12; month++)
-                        {
-                            <option value="@month.ToString(CultureInfo.InvariantCulture)">@CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(month)</option>
-                        }
-                    </select>
-                </label>
-            }
-
-            <label class="span-2">
-                Notiz
-                <textarea class="field" rows="3" @bind="Note"></textarea>
-            </label>
         </div>
+
+        <details class="optional-fields">
+            <summary>Weitere Angaben <span>optional</span></summary>
+            <div class="form-grid">
+                <label>
+                    Zuständig
+                    <input class="field" list="owner-suggestions" placeholder="z. B. Gemeinsam" @bind="Owner" disabled="@MetadataLocked" />
+                    <datalist id="owner-suggestions">
+                        <option value="Mann" />
+                        <option value="Frau" />
+                        <option value="Gemeinsam" />
+                    </datalist>
+                </label>
+
+                @if (Frequency != BudgetFrequency.Once)
+                {
+                    <label>
+                        Abweichender Zahlungstag
+                        <input class="field" type="number" min="1" max="31" inputmode="numeric" placeholder="aus Startdatum" @bind="PaymentDay" />
+                    </label>
+                }
+
+                @if (Frequency == BudgetFrequency.Yearly)
+                {
+                    <label>
+                        Abweichender Zahlungsmonat
+                        <select class="field" @bind="PaymentMonth">
+                            <option value="">aus Startdatum</option>
+                            @for (var month = 1; month <= 12; month++)
+                            {
+                                <option value="@month">@culture.DateTimeFormat.GetMonthName(month)</option>
+                            }
+                        </select>
+                    </label>
+                }
+
+                <label class="span-2">
+                    Notiz
+                    <textarea class="field" rows="2" maxlength="500" placeholder="Nur wenn sie später beim Einordnen hilft" @bind="Note"></textarea>
+                </label>
+            </div>
+        </details>
+
+        @if (Preview.Count > 0)
+        {
+            <section class="due-preview" aria-live="polite">
+                <div><span class="preview-kicker">So wird geplant</span><strong>@PreviewTitle</strong></div>
+                <ol>
+                    @foreach (var entry in Preview)
+                    {
+                        <li><time datetime="@entry.DueDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)">@entry.DueDate.ToString("dd. MMM yyyy", culture)</time><strong>@entry.Amount.ToString("C", culture)</strong></li>
+                    }
+                </ol>
+            </section>
+        }
 
         <footer class="sheet-actions">
             <button type="button" class="button secondary" @onclick="Cancel">Abbrechen</button>
@@ -124,9 +165,11 @@
     private Guid CategoryId { get; set; }
     private string AmountText { get; set; } = string.Empty;
     private BudgetFrequency Frequency { get; set; } = BudgetFrequency.Monthly;
-    private string ValidFromText { get; set; } = DateOnly.FromDateTime(DateTime.Today).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+    private string ValidFromText { get; set; } = string.Empty;
+    private DateOnly today;
     private string ValidToText { get; set; } = string.Empty;
-    private string PaymentMonthText { get; set; } = string.Empty;
+    private int? PaymentDay { get; set; }
+    private int? PaymentMonth { get; set; }
     private string? Note { get; set; }
     private string? error;
 
@@ -135,9 +178,15 @@
     private string ModeTitle => Mode switch
     {
         "Edit" => "Bearbeiten",
-        "Version" => "Versionierung",
-        "EditVersion" => "Korrektur",
+        "Version" => "Änderung ab Stichtag",
+        "EditVersion" => "Historische Korrektur",
         _ => "Neue Position"
+    };
+    private string? ModeMessage => Mode switch
+    {
+        "Version" => "Du änderst den Plan ab dem gewählten Datum. Frühere Monate bleiben unverändert.",
+        "EditVersion" => "Du korrigierst einen bereits gespeicherten Zeitraum. Das kann historische Auswertungen verändern.",
+        _ => null
     };
     private string Heading => Mode switch
     {
@@ -147,9 +196,14 @@
         _ => Type == BudgetItemType.Income ? "Neue Einnahme" : "Neue Ausgabe"
     };
     private bool CanSave => !string.IsNullOrWhiteSpace(Name) && TryParseAmount(out var amount) && amount >= 0 && DateOnly.TryParse(ValidFromText, out _) && CategoryId != Guid.Empty;
+    private IReadOnlyList<PaymentSchedulePreviewEntry> Preview => BuildPreview();
+    private string PreviewTitle => Frequency == BudgetFrequency.Once ? "Einmalige Zahlung" : "Nächste drei Zahlungen";
+    private int? EffectivePaymentDay => Frequency == BudgetFrequency.Once ? null : PaymentDay;
+    private int? EffectivePaymentMonth => Frequency == BudgetFrequency.Yearly ? PaymentMonth : null;
 
     protected override async Task OnInitializedAsync()
     {
+        today = await HouseholdSettings.GetTodayAsync();
         activeCategories = (await Categories.GetAllAsync()).Where(c => c.IsActive).OrderBy(c => c.Name).ToList();
         PopulateFromParameters();
     }
@@ -166,17 +220,18 @@
         Name = Item?.Name ?? string.Empty;
         Owner = Item?.Owner;
         Type = Item?.Type ?? BudgetItemType.Expense;
-        CategoryId = PresetCategoryId ?? Item?.CategoryId ?? activeCategories.FirstOrDefault()?.Id ?? Guid.Empty;
+        CategoryId = PresetCategoryId ?? Item?.CategoryId ?? Guid.Empty;
         // Beim Anlegen leer lassen – der Platzhalter zeigt das Format, kein hart gesetztes 0,00.
         AmountText = source?.Amount.ToString("N2", culture) ?? string.Empty;
         Frequency = source?.Frequency ?? BudgetFrequency.Monthly;
         // Bei "Version" (neue Version) heute vorbelegen; sonst das Datum der Quelle.
-        ValidFromText = (Mode == "Version" ? DateOnly.FromDateTime(DateTime.Today) : source?.ValidFrom ?? DateOnly.FromDateTime(DateTime.Today))
+        ValidFromText = (Mode == "Version" ? today : source?.ValidFrom ?? today)
             .ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
         ValidToText = Mode == "EditVersion"
             ? source?.ValidTo?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? string.Empty
             : string.Empty;
-        PaymentMonthText = source?.PaymentMonth?.ToString(CultureInfo.InvariantCulture) ?? string.Empty;
+        PaymentDay = source?.PaymentDay;
+        PaymentMonth = source?.PaymentMonth;
         Note = source?.Note;
     }
 
@@ -189,31 +244,27 @@
 
         try
         {
-            var paymentMonth = string.IsNullOrWhiteSpace(PaymentMonthText)
-                ? (int?)null
-                : int.Parse(PaymentMonthText, CultureInfo.InvariantCulture);
-
             BudgetItemDto? saved = null;
             if (Mode == "Edit" && Item is not null)
             {
                 saved = await Items.UpdateMetadataAsync(Item.Id, new UpdateBudgetItemMetadataRequest(Name.Trim(), Item.Description, Type, CategoryId, Owner));
-                await Items.UpdateCurrentVersionAsync(Item.Id, new UpdateVersionRequest(amount, Frequency, validFrom, null, paymentMonth, Note));
+                await Items.UpdateCurrentVersionAsync(Item.Id, new UpdateVersionRequest(amount, Frequency, validFrom, EffectivePaymentDay, EffectivePaymentMonth, Note));
                 saved = await Items.GetByIdAsync(Item.Id);
             }
             else if (Mode == "Version" && Item is not null)
             {
-                await Items.AddVersionAsync(Item.Id, new CreateBudgetItemVersionRequest(amount, Frequency, validFrom, null, paymentMonth, Note));
+                await Items.AddVersionAsync(Item.Id, new CreateBudgetItemVersionRequest(amount, Frequency, validFrom, EffectivePaymentDay, EffectivePaymentMonth, Note));
                 saved = await Items.GetByIdAsync(Item.Id);
             }
             else if (Mode == "EditVersion" && Item is not null && VersionId is { } versionId)
             {
                 var validTo = DateOnly.TryParse(ValidToText, out var parsedTo) ? parsedTo : (DateOnly?)null;
-                await Items.UpdateVersionAsync(Item.Id, versionId, new UpdateVersionRequest(amount, Frequency, validFrom, null, paymentMonth, Note, validTo));
+                await Items.UpdateVersionAsync(Item.Id, versionId, new UpdateVersionRequest(amount, Frequency, validFrom, EffectivePaymentDay, EffectivePaymentMonth, Note, validTo));
                 saved = await Items.GetByIdAsync(Item.Id);
             }
             else
             {
-                saved = await Items.CreateAsync(new CreateBudgetItemRequest(Name.Trim(), null, Type, CategoryId, amount, Frequency, validFrom, null, paymentMonth, Note, Owner));
+                saved = await Items.CreateAsync(new CreateBudgetItemRequest(Name.Trim(), null, Type, CategoryId, amount, Frequency, validFrom, EffectivePaymentDay, EffectivePaymentMonth, Note, Owner));
             }
 
             await OnSaved.InvokeAsync(saved);
@@ -234,6 +285,24 @@
         if (!text.Contains(','))
             return decimal.TryParse(text.Replace('.', ','), NumberStyles.Number, culture, out amount);
         return false;
+    }
+
+    private IReadOnlyList<PaymentSchedulePreviewEntry> BuildPreview()
+    {
+        if (!TryParseAmount(out var amount) || amount < 0 || !DateOnly.TryParse(ValidFromText, out var validFrom))
+        {
+            return [];
+        }
+
+        try
+        {
+            return PaymentSchedulePreview.Build(new CreateBudgetItemVersionRequest(
+                amount, Frequency, validFrom, EffectivePaymentDay, EffectivePaymentMonth, Note));
+        }
+        catch (DomainException)
+        {
+            return [];
+        }
     }
 
     private void OnValidFromChanged(ChangeEventArgs args)

@@ -1,4 +1,5 @@
 @page "/budgetpositionen/{Id:guid}"
+@inject IHouseholdSettingsService HouseholdSettings
 @rendermode InteractiveServer
 @inject IBudgetItemService Items
 @inject IBudgetProjectionService Projections
@@ -30,20 +31,16 @@ else
 
     <section class="panel action-panel">
         <div>
-            <h2>Betrag ab einem Datum ändern</h2>
-            <p class="hint">Neue Version ab Datum ist der sichere Standard. Historische Monate bleiben unverändert.</p>
+            <h2>Geplanten Betrag ändern</h2>
+            <p class="hint compact">Lege fest, ab wann die Änderung gilt. Frühere Monate bleiben unverändert.</p>
         </div>
-        <div class="radio-row" aria-label="Versionierungsmodus">
-            <label><input type="radio" checked /> Neue Version ab Datum</label>
-            <label class="muted"><input type="radio" disabled /> rückwirkend</label>
-        </div>
-        <button class="button primary" @onclick="OpenVersion">Neue Version anlegen</button>
+        <button class="button primary" @onclick="OpenVersion">Änderung planen</button>
     </section>
 
     <section class="panel">
         <header class="panel-header">
-            <h2>Versionshistorie</h2>
-            <span>neueste oben</span>
+            <h2>Bisherige Planstände</h2>
+            <span>Neueste zuerst</span>
         </header>
         <div class="timeline">
             @foreach (var version in item.Versions.OrderByDescending(v => v.ValidFrom))
@@ -54,7 +51,7 @@ else
                         <header>
                             <strong class="numeric">@Money(version.Amount)</strong>
                             <div class="timeline-actions">
-                                <span class="pill @(version.IsCurrent ? "success" : "neutral")">@(version.IsCurrent ? "Aktuell" : "Historisch")</span>
+                                <span class="pill @(version.IsCurrent ? "success" : "neutral")">@(version.IsCurrent ? "Aktueller Plan" : "Früherer Plan")</span>
                                 <button class="button secondary tiny" @onclick="() => OpenVersionEdit(version.Id)">Korrigieren</button>
                             </div>
                         </header>
@@ -159,7 +156,7 @@ else
 
         // Von der frühesten Version bis fünf Jahre in die Zukunft.
         ScheduleFromYear = item.Versions.Min(v => v.ValidFrom).Year;
-        ScheduleToYear = Math.Max(DateTime.Today.Year + 5, ScheduleFromYear);
+        ScheduleToYear = Math.Max((await HouseholdSettings.GetTodayAsync()).Year + 5, ScheduleFromYear);
         schedule = await Projections.GetPaymentScheduleAsync(item.Id, ScheduleFromYear, ScheduleToYear);
     }
 

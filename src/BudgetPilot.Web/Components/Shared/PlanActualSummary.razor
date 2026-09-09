@@ -1,0 +1,60 @@
+<section class="panel comparison-panel">
+    <header class="panel-header">
+        <div>
+            <p class="eyebrow">Cashflow-Vergleich</p>
+            <h2>Plan und Ist</h2>
+        </div>
+        <span>@PeriodLabel</span>
+    </header>
+
+    <div class="comparison-grid">
+        <ComparisonCard Label="Einnahmen" Planned="Comparison.PlannedIncome" Actual="Comparison.ActualIncome"
+                        Variance="Comparison.IncomeVariance" PositiveIsGood="true" />
+        <ComparisonCard Label="Ausgaben" Planned="Comparison.PlannedExpense" Actual="Comparison.ActualExpense"
+                        Variance="Comparison.ExpenseVariance" PositiveIsGood="false" />
+        <ComparisonCard Label="Saldo" Planned="Comparison.PlannedBalance" Actual="Comparison.ActualBalance"
+                        Variance="Comparison.BalanceVariance" PositiveIsGood="true" />
+    </div>
+
+    <details class="comparison-categories" open="@ShowCategories">
+        <summary>Abweichung nach Kategorie</summary>
+        @if (Comparison.Categories.Count == 0)
+        {
+            <p class="muted">Für diesen Zeitraum gibt es noch keine geplanten oder gebuchten Ausgaben.</p>
+        }
+        else
+        {
+            <div class="comparison-list">
+                @foreach (var category in Comparison.Categories)
+                {
+                    <div class="comparison-row">
+                        <strong>@category.CategoryName</strong>
+                        <span>Plan @Money(category.PlannedExpense)</span>
+                        <span>Ist @Money(category.ActualExpense)</span>
+                        <span class="@VarianceClass(category.ExpenseVariance, false)">@VarianceText(category.ExpenseVariance)</span>
+                    </div>
+                }
+            </div>
+        }
+    </details>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public PlanActualComparisonDto Comparison { get; set; } = null!;
+    [Parameter] public bool ShowCategories { get; set; } = true;
+
+    private readonly CultureInfo culture = CultureInfo.GetCultureInfo("de-DE");
+    private string PeriodLabel => Comparison.Month is { } month
+        ? new DateOnly(Comparison.Year, month, 1).ToString("MMMM yyyy", culture)
+        : Comparison.Year.ToString(culture);
+    private string Money(decimal value) => value.ToString("C", culture);
+    private static string VarianceText(decimal value) => value switch
+    {
+        > 0 => $"+{value:N2} €",
+        < 0 => $"{value:N2} €",
+        _ => "im Plan",
+    };
+    private static string VarianceClass(decimal value, bool positiveIsGood) => value == 0
+        ? "variance neutral"
+        : (value > 0) == positiveIsGood ? "variance good" : "variance bad";
+}

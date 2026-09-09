@@ -1,0 +1,116 @@
+@inject BudgetPilotApiClient Api
+
+<article class="occurrence-entry">
+    <div class="budget-line">
+        <div>
+            <strong>@Occurrence.BudgetItemName</strong>
+            <span>@Occurrence.CategoryName · @Occurrence.DueDate.ToString("dd.MM.yyyy", GermanCulture)</span>
+        </div>
+        <span class="pill @(Occurrence.DueDate < Today ? "negative" : "neutral")">@DueLabel</span>
+        <strong class="numeric">@Money(Occurrence.PlannedAmount)</strong>
+    </div>
+
+    @if (mode is null)
+    {
+        <div class="row-actions">
+            <button class="small-action" disabled="@busy" @onclick="() => mode = ActionMode.Confirm">Bestätigen</button>
+            <button class="small-action danger" disabled="@busy" @onclick="() => mode = ActionMode.Skip">Entfallen</button>
+        </div>
+    }
+    else if (mode == ActionMode.Confirm)
+    {
+        <div class="occurrence-editor">
+            <label>Betrag<input class="field" type="number" min="0" step="0.01" @bind="amount" /></label>
+            <label>Bezahlt am<input class="field" type="date" @bind="actualDate" /></label>
+            <label class="wide">Notiz (optional)<input class="field" maxlength="500" @bind="note" /></label>
+            <div class="row-actions wide">
+                <button class="small-action" disabled="@busy" @onclick="ConfirmAsync">Als bezahlt speichern</button>
+                <button class="small-action" disabled="@busy" @onclick="Close">Abbrechen</button>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="occurrence-editor">
+            <p class="wide muted">Diese einzelne Fälligkeit wird dauerhaft als entfallen markiert.</p>
+            <label class="wide">Grund (optional)<input class="field" maxlength="500" @bind="note" /></label>
+            <div class="row-actions wide">
+                <button class="small-action danger" disabled="@busy" @onclick="SkipAsync">Wirklich entfallen</button>
+                <button class="small-action" disabled="@busy" @onclick="Close">Abbrechen</button>
+            </div>
+        </div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(error))
+    {
+        <p class="alert compact">@error</p>
+    }
+</article>
+
+@code {
+    private static readonly CultureInfo GermanCulture = CultureInfo.GetCultureInfo("de-DE");
+
+    [Parameter, EditorRequired] public PlannedOccurrenceDto Occurrence { get; set; } = null!;
+    [Parameter, EditorRequired] public DateOnly Today { get; set; }
+    [Parameter] public EventCallback Resolved { get; set; }
+
+    private ActionMode? mode;
+    private decimal amount;
+    private DateOnly actualDate;
+    private string? note;
+    private string? error;
+    private bool busy;
+
+    protected override void OnParametersSet()
+    {
+        if (mode is null)
+        {
+            amount = Occurrence.PlannedAmount;
+            actualDate = Occurrence.DueDate;
+        }
+    }
+
+    private string DueLabel => Occurrence.DueDate < Today
+        ? "Überfällig"
+        : Occurrence.DueDate == Today ? "Heute" : "Geplant";
+
+    private async Task ConfirmAsync() => await ExecuteAsync(() => Api.ConfirmOccurrenceAsync(
+        Occurrence.BudgetItemId,
+        Occurrence.DueDate,
+        new ConfirmOccurrenceRequest(amount, actualDate, note)));
+
+    private async Task SkipAsync() => await ExecuteAsync(() => Api.SkipOccurrenceAsync(
+        Occurrence.BudgetItemId,
+        Occurrence.DueDate,
+        new SkipOccurrenceRequest(note)));
+
+    private async Task ExecuteAsync(Func<Task<OccurrenceResolutionDto>> action)
+    {
+        busy = true;
+        error = null;
+        try
+        {
+            await action();
+            await Resolved.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+
+    private void Close()
+    {
+        mode = null;
+        note = null;
+        error = null;
+    }
+
+    private static string Money(decimal value) => value.ToString("C", GermanCulture);
+
+    private enum ActionMode { Confirm, Skip }
+}

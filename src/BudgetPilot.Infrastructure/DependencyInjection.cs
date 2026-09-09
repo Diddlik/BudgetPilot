@@ -52,6 +52,9 @@ public static class DependencyInjection
         // ── Repositories ────────────────────────────────────────────────
         services.AddScoped<IBudgetItemRepository, BudgetItemRepository>();
         services.AddScoped<ICategoryRepository, CategoryRepository>();
+        services.AddScoped<IHouseholdSettingsStore, HouseholdSettingsStore>();
+        services.AddScoped<IResolvedOccurrenceStore, ResolvedOccurrenceStore>();
+        services.AddScoped<IActualTransactionStore, ActualTransactionStore>();
 
         // ── Unit of Work ────────────────────────────────────────────────
         services.AddScoped<IUnitOfWork, UnitOfWork>();

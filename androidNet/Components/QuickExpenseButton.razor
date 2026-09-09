@@ -1,0 +1,135 @@
+@inject BudgetPilotApiClient Api
+
+<button class="quick-expense-trigger" type="button" @onclick="Open" aria-haspopup="dialog">
+    <span aria-hidden="true">＋</span> Ausgabe
+</button>
+
+@if (isOpen)
+{
+    <div class="quick-expense-backdrop" @onclick="Close">
+        <section class="quick-expense-sheet" role="dialog" aria-modal="true" aria-labelledby="quick-expense-title" @onclick:stopPropagation>
+            <header>
+                <div>
+                    <p class="eyebrow">Schnell gebucht</p>
+                    <h2 id="quick-expense-title">Ausgabe erfassen</h2>
+                </div>
+                <button class="icon-button" type="button" title="Schließen" @onclick="Close">×</button>
+            </header>
+
+            <label for="quick-amount">Betrag</label>
+            <div class="quick-amount-wrap">
+                <input id="quick-amount" inputmode="decimal" type="number" min="0.01" step="0.01"
+                       @bind="amount" placeholder="0,00" autofocus />
+                <span>€</span>
+            </div>
+
+            <label for="quick-category">Kategorie</label>
+            <select id="quick-category" @bind="categoryId">
+                <option value="">Bitte auswählen</option>
+                @foreach (var category in categories.Where(x => x.IsActive).OrderBy(x => x.Name))
+                {
+                    <option value="@category.Id">@category.Name</option>
+                }
+            </select>
+
+            <details class="quick-more">
+                <summary>Optional zuordnen oder Notiz ergänzen</summary>
+                <label for="quick-item">Budgetposition</label>
+                <select id="quick-item" @bind="budgetItemId">
+                    <option value="">Keine Zuordnung</option>
+                    @foreach (var item in MatchingItems)
+                    {
+                        <option value="@item.Id">@item.Name</option>
+                    }
+                </select>
+                <label for="quick-note">Notiz</label>
+                <input id="quick-note" maxlength="500" @bind="description" placeholder="z. B. Wocheneinkauf" />
+            </details>
+
+            @if (!string.IsNullOrWhiteSpace(error))
+            {
+                <p class="form-error" role="alert">@error</p>
+            }
+
+            <button class="primary-button quick-save" type="button" disabled="@saving" @onclick="SaveAsync">
+                @(saving ? "Wird gespeichert …" : "Ausgabe speichern")
+            </button>
+        </section>
+    </div>
+}
+
+@code {
+    [Parameter] public EventCallback Saved { get; set; }
+
+    private IReadOnlyList<CategoryDto> categories = [];
+    private IReadOnlyList<BudgetItemDto> items = [];
+    private Guid requestId;
+    private string amount = string.Empty;
+    private string categoryId = string.Empty;
+    private string budgetItemId = string.Empty;
+    private string description = string.Empty;
+    private string? error;
+    private bool isOpen;
+    private bool saving;
+
+    private IEnumerable<BudgetItemDto> MatchingItems => Guid.TryParse(categoryId, out var selected)
+        ? items.Where(x => x.IsActive && x.Type == BudgetItemType.Expense && x.CategoryId == selected).OrderBy(x => x.Name)
+        : [];
+
+    private async Task Open()
+    {
+        requestId = Guid.NewGuid();
+        amount = categoryId = budgetItemId = description = string.Empty;
+        error = null;
+        isOpen = true;
+        try
+        {
+            categories = await Api.GetCategoriesAsync();
+            items = await Api.GetBudgetItemsAsync();
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+    }
+
+    private void Close()
+    {
+        if (!saving) isOpen = false;
+    }
+
+    private async Task SaveAsync()
+    {
+        error = null;
+        const NumberStyles amountStyle = NumberStyles.AllowDecimalPoint | NumberStyles.AllowLeadingSign;
+        if (!decimal.TryParse(amount, amountStyle, CultureInfo.InvariantCulture, out var parsedAmount)
+            && !decimal.TryParse(amount, amountStyle, CultureInfo.CurrentCulture, out parsedAmount))
+        {
+            error = "Bitte einen gültigen Betrag eingeben.";
+            return;
+        }
+        if (!Guid.TryParse(categoryId, out var parsedCategoryId))
+        {
+            error = "Bitte eine Kategorie auswählen.";
+            return;
+        }
+
+        saving = true;
+        try
+        {
+            var parsedItemId = Guid.TryParse(budgetItemId, out var itemId) ? itemId : (Guid?)null;
+            await Api.CreateQuickExpenseAsync(new CreateQuickExpenseRequest(
+                requestId, parsedAmount, parsedCategoryId, parsedItemId, null, description));
+            isOpen = false;
+            await Saved.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+}

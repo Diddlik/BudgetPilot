@@ -1,0 +1,28 @@
+<article class="comparison-card">
+    <span class="comparison-label">@Label</span>
+    <dl>
+        <div><dt>Plan</dt><dd>@Money(Planned)</dd></div>
+        <div><dt>Ist</dt><dd>@Money(Actual)</dd></div>
+    </dl>
+    <strong class="@VarianceClass">@VarianceLabel</strong>
+</article>
+
+@code {
+    [Parameter, EditorRequired] public string Label { get; set; } = string.Empty;
+    [Parameter] public decimal Planned { get; set; }
+    [Parameter] public decimal Actual { get; set; }
+    [Parameter] public decimal Variance { get; set; }
+    [Parameter] public bool PositiveIsGood { get; set; }
+
+    private readonly CultureInfo culture = CultureInfo.GetCultureInfo("de-DE");
+    private string Money(decimal value) => value.ToString("C", culture);
+    private string VarianceLabel => Variance switch
+    {
+        > 0 => $"{Money(Variance)} über Plan",
+        < 0 => $"{Money(decimal.Abs(Variance))} unter Plan",
+        _ => "Genau im Plan",
+    };
+    private string VarianceClass => Variance == 0
+        ? "variance neutral"
+        : (Variance > 0) == PositiveIsGood ? "variance good" : "variance bad";
+}

@@ -16,6 +16,8 @@ public class ActualTransaction
     public Category Category { get; set; } = null!;
     public Guid? BudgetItemId { get; set; }
     public BudgetItem? BudgetItem { get; set; }
+    public DateOnly? PlannedDueDate { get; set; }
+    public string? OccurrenceKey { get; set; }
     public string? Description { get; set; }
     public DateTime CreatedAt { get; set; }
 }

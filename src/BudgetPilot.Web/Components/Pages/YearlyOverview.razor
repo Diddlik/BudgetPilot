@@ -1,6 +1,7 @@
 @page "/jahresuebersicht"
 @rendermode InteractiveServer
 @inject IBudgetProjectionService Projections
+@inject IHouseholdSettingsService HouseholdSettings
 
 <PageTitle>Jahresübersicht · BudgetPilot</PageTitle>
 
@@ -128,13 +129,19 @@ else
 
 @code {
     private readonly CultureInfo culture = CultureInfo.GetCultureInfo("de-DE");
-    private int Year { get; set; } = DateTime.Today.Year;
+    private int Year { get; set; }
+    private DateOnly today;
     private BudgetViewMode ViewMode { get; set; } = BudgetViewMode.Budget;
     private YearlyBudgetProjectionDto? yearly;
     private IReadOnlyList<YearSummaryDto>? multiYear;
     private int MultiYearFrom => Year - 4;
 
-    protected override Task OnInitializedAsync() => LoadAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        today = await HouseholdSettings.GetTodayAsync();
+        Year = today.Year;
+        await LoadAsync();
+    }
 
     private async Task LoadAsync()
     {
@@ -161,7 +168,7 @@ else
     }
 
     private bool IsCurrentMonth(MonthlyBudgetProjectionDto month) =>
-        month.Year == DateTime.Today.Year && month.Month == DateTime.Today.Month;
+        month.Year == today.Year && month.Month == today.Month;
 
     private string Money(decimal value) => value.ToString("C", culture);
 }

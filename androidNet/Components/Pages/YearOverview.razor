@@ -132,7 +132,8 @@
 
 @code {
     private static readonly CultureInfo GermanCulture = CultureInfo.GetCultureInfo("de-DE");
-    private int year = DateTime.Today.Year;
+    private int year;
+    private DateOnly today;
     private BudgetViewMode viewMode;
     private YearlyBudgetProjectionDto? projection;
     private List<YearSummaryDto> multiYear = [];
@@ -153,6 +154,23 @@
             return;
         }
 
+        try
+        {
+            today = (await Api.GetHouseholdSettingsAsync()).Today;
+            year = today.Year;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            await Session.ClearAsync();
+            Navigation.NavigateTo("/", replace: true);
+            return;
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+            isLoading = false;
+            return;
+        }
         await LoadAsync();
     }
 
@@ -207,7 +225,7 @@
         ChartMaximum <= 0m ? 0m : Math.Clamp(Math.Round(value / ChartMaximum * 100m), 2m, 100m);
 
     private bool IsCurrentMonth(MonthlyBudgetProjectionDto month) =>
-        month.Year == DateTime.Today.Year && month.Month == DateTime.Today.Month;
+        month.Year == today.Year && month.Month == today.Month;
 
     private static string Money(decimal value) => value.ToString("C", GermanCulture);
 }

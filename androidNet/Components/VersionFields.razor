@@ -1,12 +1,15 @@
+@using BudgetPilot.Domain.Exceptions
+
 <fieldset class="version-fields">
-    <legend>Finanzielle Version</legend>
+    <legend>@(ShowValidTo ? "Historischen Zeitraum korrigieren" : "Zahlungsplan")</legend>
     <div class="form-grid">
         <label>
-            Betrag in EUR
+            Betrag
             <input class="field" type="number" min="0" step="0.01" inputmode="decimal" required @bind="Model.Amount" />
+            <span class="field-help">Euro pro Zahlung</span>
         </label>
         <label>
-            Frequenz
+            Wie oft?
             <select class="field" @bind="Model.Frequency">
                 <option value="@BudgetFrequency.Monthly">Monatlich</option>
                 <option value="@BudgetFrequency.Quarterly">Quartalsweise</option>
@@ -16,36 +19,91 @@
         </label>
     </div>
     <label>
-        Gültig ab
+        @(Model.Frequency == BudgetFrequency.Once ? "Zahlungsdatum" : "Erste geplante Zahlung")
         <input class="field" type="date" required @bind="Model.ValidFrom" @bind:format="yyyy-MM-dd" />
     </label>
     @if (ShowValidTo)
     {
         <label>
-            Gültig bis (leer = offen)
+            Zeitraum endet am (optional)
             <input class="field" type="date" @bind="Model.ValidTo" @bind:format="yyyy-MM-dd" />
-            <span class="hint">Nachbarversionen werden automatisch auf den Vor-/Folgemonat verschoben.</span>
+            <span class="hint">Nur für eine historische Korrektur.</span>
         </label>
     }
-    <div class="form-grid">
+
+    <details class="optional-fields">
+        <summary>Weitere Planungsangaben <span>optional</span></summary>
+        <div class="form-grid">
+            @if (Model.Frequency != BudgetFrequency.Once)
+            {
+                <label>
+                    Abweichender Zahlungstag
+                    <input class="field" type="number" min="1" max="31" inputmode="numeric" placeholder="aus Startdatum" @bind="Model.PaymentDay" />
+                </label>
+            }
+            @if (Model.Frequency == BudgetFrequency.Yearly)
+            {
+                <label>
+                    Abweichender Zahlungsmonat
+                    <select class="field" @bind="Model.PaymentMonth">
+                        <option value="">aus Startdatum</option>
+                        @for (var month = 1; month <= 12; month++)
+                        {
+                            <option value="@month">@GermanCulture.DateTimeFormat.GetMonthName(month)</option>
+                        }
+                    </select>
+                </label>
+            }
+        </div>
         <label>
-            Zahlungstag (optional)
-            <input class="field" type="number" min="1" max="31" inputmode="numeric" @bind="Model.PaymentDay" />
+            Notiz
+            <textarea class="field textarea" rows="2" maxlength="500" placeholder="Nur wenn sie später beim Einordnen hilft" @bind="Model.Note"></textarea>
         </label>
-        <label>
-            Zahlungsmonat (optional)
-            <input class="field" type="number" min="1" max="12" inputmode="numeric" @bind="Model.PaymentMonth" />
-        </label>
-    </div>
-    <label>
-        Notiz (optional)
-        <textarea class="field textarea" rows="2" maxlength="500" @bind="Model.Note"></textarea>
-    </label>
+    </details>
+
+    @if (Preview.Count > 0)
+    {
+        <section class="due-preview" aria-live="polite">
+            <div><span class="preview-kicker">So wird geplant</span><strong>@(Model.Frequency == BudgetFrequency.Once ? "Einmalige Zahlung" : "Nächste drei Zahlungen")</strong></div>
+            <ol>
+                @foreach (var entry in Preview)
+                {
+                    <li><time datetime="@entry.DueDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)">@entry.DueDate.ToString("dd. MMM yyyy", GermanCulture)</time><strong>@entry.Amount.ToString("C", GermanCulture)</strong></li>
+                }
+            </ol>
+        </section>
+    }
 </fieldset>
 
 @code {
+    private static readonly CultureInfo GermanCulture = CultureInfo.GetCultureInfo("de-DE");
+
     [Parameter, EditorRequired] public VersionFormModel Model { get; set; } = default!;
 
     /// <summary>„Gültig bis" nur beim Korrigieren einer bestehenden Version anbieten.</summary>
     [Parameter] public bool ShowValidTo { get; set; }
+
+    private IReadOnlyList<PaymentSchedulePreviewEntry> Preview
+    {
+        get
+        {
+            if (Model.Amount <= 0 || Model.ValidFrom == default)
+            {
+                return [];
+            }
+
+            try
+            {
+                return PaymentSchedulePreview.Build(new CreateBudgetItemVersionRequest(
+                    Model.Amount, Model.Frequency, Model.ValidFrom,
+                    Model.Frequency == BudgetFrequency.Once ? null : Model.PaymentDay,
+                    Model.Frequency == BudgetFrequency.Yearly ? Model.PaymentMonth : null,
+                    Model.Note));
+            }
+            catch (DomainException)
+            {
+                return [];
+            }
+        }
+    }
 }

@@ -31,6 +31,11 @@ public class BudgetItemConfiguration : IEntityTypeConfiguration<BudgetItem>
         builder.Property(b => b.Owner)
             .HasMaxLength(100);
 
+        builder.Property(b => b.DeactivatedOn)
+            .HasConversion(
+                date => date.HasValue ? date.Value.ToString("yyyy-MM-dd") : null,
+                value => value == null ? null : DateOnly.ParseExact(value, "yyyy-MM-dd"));
+
         // Relationship: Category 1→* BudgetItem
         // Category darf NICHT gelöscht werden solange Items existieren (Restrict)
         builder.HasOne(b => b.Category)

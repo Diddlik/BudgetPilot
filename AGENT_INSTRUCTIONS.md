@@ -29,7 +29,7 @@ Checklist when you touch domain/API behaviour:
 | Change | Also update |
 |---|---|
 | new/changed field in `Application/Requests` or `Dtos` | `androidNet/Services/*FormModel.cs`, `androidNet/Components/**`, `androidNet/Services/BudgetItemInputValidator.cs` |
-| new/changed `/api/v1/...` endpoint | `androidNet/Services/BudgetPilotApiClient.cs`; `android/` Retrofit interface + models if that screen exists there |
+| new/changed `/api/v1/...` endpoint | `androidNet/Services/BudgetPilotApiClient.cs` |
 | new/changed validation or versioning rule | mobile pre-validation + the hint texts in both UIs |
 | new/changed build, test or release command | the Commands section below |
 
@@ -38,9 +38,9 @@ Checklist when you touch domain/API behaviour:
 If you cannot compile it, still make the change and **say explicitly that it is
 unverified**.
 
-`android/` (Kotlin) is a P1 scaffold (Setup → Login → Dashboard) and only needs
-updating when a screen it actually implements is affected. Additive, optional
-API fields stay backward compatible for it.
+`android/` (Kotlin) is a retained prototype and is no longer developed. Do not
+mirror features or API changes into it. All Android product work continues only
+in `androidNet/`.
 
 ## Project state
 
@@ -75,7 +75,7 @@ cookie-login redirect; mobile clients clear the session and request a new login.
 `src/BudgetPilot.Web/Api/` — `AuthEndpoints.cs` maps `/api/auth/login` + `/refresh`
 (ASP.NET Identity **bearer tokens**, `IdentityConstants.BearerScheme`; deliberately
 no `/register` — accounts are admin-created), and `DataEndpoints.cs` maps
-`/api/v1/...` (categories, budget-items, versions, projections, audit) as a thin
+`/api/v1/...` (categories, budget-items, versions, projections, open/resolve occurrences, audit, household settings) as a thin
 layer over the existing Application services/DTOs, protected with the bearer scheme
 (`RequireAuthorization`), antiforgery disabled, `DomainException` → RFC-7807
 ProblemDetails (400) via an endpoint filter. Enums serialize as strings
@@ -86,25 +86,23 @@ Internet exposure: Caddy reverse proxy (`docker-compose.prod.yml` + `Caddyfile`,
 TLS via Let's Encrypt); the app honours `X-Forwarded-Proto` (`UseForwardedHeaders`).
 Secrets live in `.env` (gitignored; see `.env.example`).
 
-**Android clients (two deliberately separate tracks):** `android/` is the Kotlin /
-Jetpack Compose Gradle project (historically the Claude Code track). `androidNet/`
-is the .NET MAUI Blazor Hybrid project (`BudgetPilot.Mobile.csproj`, historically
-the Codex track). Keep *feature* work in the assigned folder so the two approaches
-do not collide — but contract changes must be mirrored everywhere (see **Client
-parity** above). Both clients talk to the JSON API: Setup (instance URL) → Login
-(bearer token) → Dashboard. The MAUI track additionally has P2 read paths for
+**Android client:** only `androidNet/` is continued as the product client. It is
+the .NET MAUI Blazor Hybrid project (`BudgetPilot.Mobile.csproj`) and talks to the
+JSON API: Setup (instance URL) → Login (bearer token) → Dashboard. It has P2 read paths for
 yearly/multi-year projections, budget-item and category lists, the audit log,
 online write paths, an offline read cache, optional local PIN lock (AndroidX
 `BiometricPrompt` with PIN fallback), mobile tests, and a keystore-driven
 APK/AAB release script. `/settings` manages security, account/session, instance
-URL, default view/start page and offline cache. The login accepts a hostname with
+URL, default view/start page, the shared household time zone and offline cache. The login accepts a hostname with
 an explicit HTTPS/HTTP selector; HTTPS is the default and HTTP is marked as
 unencrypted. Release builds derive Android `versionCode` from the Git commit count
 and `versionName` as `1.0.<count>`. It reuses existing Application DTOs and Domain
 enums via ProjectReference; projection, versioning and validation stay
 server-side. The MAUI project uses its own `androidNet/global.json` and targets
 .NET 10 / Android API 36.1 (`net10.0-android36.1`) for Google Play compliance.
-Neither Android project is part of `BudgetPilot.sln` or the .NET/Docker CI.
+`android/` remains in the repository only as an unmaintained Kotlin/Compose
+prototype and is not a parity target. Neither Android project is part of
+`BudgetPilot.sln` or the .NET/Docker CI.
 Requirements/plan: `Docs/ANDROID_APP_REQUIREMENTS.md`. The public privacy policy
 is deployed from `site/` via `.github/workflows/pages.yml` to
 `https://diddlik.github.io/BudgetPilot/privacy/` and linked from mobile settings.
@@ -131,7 +129,10 @@ is the fallback. GHCR package visibility must be set to **public** once (anonymo
 pull, no registry login on the server).
 
 Code, identifiers, and enums are English; user-facing UI text and the specs are
-German. Money is `decimal`, business dates are `DateOnly`.
+German. Money is `decimal`, business dates are `DateOnly`. Calendar decisions
+use `IHouseholdSettingsService`, never the host/device-local `DateTime.Today`.
+The singleton `HouseholdSettings` row stores a portable IANA time-zone id
+(`Europe/Berlin` by default); UTC remains mandatory for audit/creation timestamps.
 
 BudgetPilot is a self-hosted household budgeting web app (.NET 8 / Blazor) that
 projects recurring/one-off income and expenses into monthly and yearly views.
@@ -152,7 +153,7 @@ src/BudgetPilot.Infrastructure   EF Core DbContext, repo impls, migrations, seed
 tests/BudgetPilot.Domain.Tests
 tests/BudgetPilot.Application.Tests      xUnit + FluentAssertions
 tests/BudgetPilot.Integration.Tests      real EF Core/SQLite stack
-android/                         Kotlin/Compose client (own Gradle build, not in the sln)
+android/                         archived Kotlin/Compose prototype; no further feature work
 androidNet/                      .NET MAUI Blazor Hybrid client (own global.json, not in the sln)
 androidNet.Tests/                tests for the MAUI client
 ```
@@ -246,9 +247,15 @@ versions) are enumerated in spec §17 — implement these as the test baseline.
 ## Conventions (from spec §18, §24)
 
 - `decimal` for all money; `DateOnly` for business dates (`DateTime` only for audit timestamps like `CreatedAt`).
+- Resolve "today" through `IHouseholdSettingsService`; web and androidNet must use the server-provided household date.
+- Creation forms expose only name, type, category, amount, frequency and first due date by default. Keep owner, notes and payment overrides progressive; build the three-date preview through `PaymentSchedulePreview`, not inside UI components.
+- Recurring rules remain versioned `BudgetItemVersion` templates. `PlannedOccurrenceService` derives every due instance from the first valid version through the requested horizon, so unopened months remain visible. `OccurrenceResolution` persists one unique terminal state (`Confirmed` or `Skipped`) per `OccurrenceKey` (`{BudgetItemId:N}:{yyyy-MM-dd}`); confirmed instances additionally create an `ActualTransaction` with the possibly adjusted date and amount. Never persist future planned rows eagerly, and never alter the plan when resolving an occurrence.
+- Corrections update only the linked `ActualTransaction`; reopening removes both the `OccurrenceResolution` and its optional transaction so the derived occurrence becomes open again. Confirm, skip, correct and reopen actions must be recorded through `IAuditLog`.
+- Plan/actual comparisons use cashflow projections for the selected calendar period and actual transaction dates for reality. Expense variance is `actual - planned`; categories are the union of planned and actually booked expense categories. Keep this read-only contract consistent across Web and androidNet.
+- Quick expenses use the client-generated `RequestId` as `ActualTransaction.Id`; retries must reuse it so double taps and uncertain network responses stay idempotent. Omit the date unless the user explicitly chose one, so the server resolves the current household date at write time. An optional budget-item assignment must reference an active expense item in the selected category. Keep amount and category as the only required UI inputs across Web and androidNet.
 - Locale is German: currency EUR, dates `dd.MM.yyyy`, numbers `de-DE`.
 - Validation (spec §12): amount ≥ 0; `ValidTo` not before `ValidFrom`;
   `PaymentDay` 1–31; `PaymentMonth` 1–12; no overlapping versions per item.
-- Deactivating an item/category removes it from future planning but must keep historical data intact.
+- Deactivating an item/category removes it from future planning but must keep historical data intact. `BudgetItem.DeactivatedOn` is the household-local cutoff: unresolved occurrences through that date remain visible; later ones are excluded. Reactivation clears the cutoff.
 - The app is private/single-household by default but uses ASP.NET Core Identity
   for web cookies and API bearer tokens. Keep services small; build simple UI first.
