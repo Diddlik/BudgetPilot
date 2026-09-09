@@ -20,7 +20,8 @@ public sealed class OccurrenceActionServiceTests
         data.Categories.Add(category);
         data.Items.Add(item);
         var resolutions = new FakeOccurrenceResolutionStore();
-        var planned = new PlannedOccurrenceService(new FakeBudgetItemRepository(data), resolutions);
+        var planned = new PlannedOccurrenceService(
+            new FakeBudgetItemRepository(data), resolutions, new FakeHouseholdSettingsService(new DateOnly(2026, 1, 1)));
         var service = new OccurrenceActionService(planned, resolutions, new NoopAuditLog());
 
         var first = await service.ConfirmAsync(item.Id, new DateOnly(2026, 2, 5), new ConfirmOccurrenceRequest());
@@ -125,7 +126,8 @@ public sealed class OccurrenceActionServiceTests
         data.Categories.Add(category);
         data.Items.Add(item);
         var resolutions = new FakeOccurrenceResolutionStore();
-        var planned = new PlannedOccurrenceService(new FakeBudgetItemRepository(data), resolutions);
+        var planned = new PlannedOccurrenceService(
+            new FakeBudgetItemRepository(data), resolutions, new FakeHouseholdSettingsService(new DateOnly(2026, 1, 1)));
         return (item, new OccurrenceActionService(planned, resolutions, audit ?? new NoopAuditLog()), resolutions);
     }
 }

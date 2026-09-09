@@ -8,4 +8,5 @@ public sealed class HouseholdSettings
 
     public int Id { get; set; } = SingletonId;
     public string TimeZoneId { get; set; } = DefaultTimeZoneId;
+    public DateOnly? OccurrenceTrackingStartDate { get; set; }
 }

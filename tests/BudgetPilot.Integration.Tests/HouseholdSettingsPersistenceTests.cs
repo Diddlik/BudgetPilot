@@ -24,11 +24,12 @@ public sealed class HouseholdSettingsPersistenceTests
             var store = new HouseholdSettingsStore(writeDb);
 
             (await store.GetTimeZoneIdAsync()).Should().Be(HouseholdSettings.DefaultTimeZoneId);
-            await store.SetTimeZoneIdAsync("America/New_York");
+            await store.SetAsync("America/New_York", new DateOnly(2026, 9, 1));
         }
 
         await using var readDb = new BudgetPilotDbContext(options);
         var reloaded = new HouseholdSettingsStore(readDb);
         (await reloaded.GetTimeZoneIdAsync()).Should().Be("America/New_York");
+        (await reloaded.GetOccurrenceTrackingStartDateAsync()).Should().Be(new DateOnly(2026, 9, 1));
     }
 }

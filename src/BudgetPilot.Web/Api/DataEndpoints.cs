@@ -157,7 +157,7 @@ public static class DataEndpoints
         // ── Haushalt ───────────────────────────────────────────────────
         v1.MapGet("/settings/household", (IHouseholdSettingsService s, CancellationToken ct) => s.GetAsync(ct));
         v1.MapPut("/settings/household", (UpdateHouseholdSettingsRequest r, IHouseholdSettingsService s, CancellationToken ct)
-            => s.UpdateTimeZoneAsync(r.TimeZoneId, ct));
+            => s.UpdateAsync(r, ct));
 
         return v1;
     }

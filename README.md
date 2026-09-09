@@ -34,6 +34,7 @@ Datums- und Zahlenformate.
 - Budget- und Cashflow-Sicht
 - Monatliche, quartalsweise, jährliche und einmalige Budgetpositionen
 - Historisch sichere Versionierung ab einem frei wählbaren Stichtag
+- Separater Start der Zahlungsverfolgung, damit alte Vertragsdaten keine rückwirkende Aufgabenliste erzeugen
 - Kategorien und Änderungsprotokoll
 - Private Anmeldung über ASP.NET Core Identity
 - Versionierte REST-API mit Bearer-Token-Authentifizierung

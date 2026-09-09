@@ -44,15 +44,21 @@ else
                     }
                 </select>
             </label>
+            <label>Zahlungen verfolgen ab
+                <input class="field" type="date" @bind="selectedTrackingStartDate" @bind:format="yyyy-MM-dd" />
+            </label>
+            <button class="button secondary" type="button" @onclick="UseCurrentMonth">Ab diesem Monat</button>
             <button class="button primary" @onclick="SaveAsync">Speichern</button>
         </div>
         <p class="hint">Für einen Haushalt in Deutschland ist <strong>Europe/Berlin</strong> richtig – inklusive automatischer Sommerzeit.</p>
+        <p class="hint">Ältere Vertrags- und Planungsdaten bleiben erhalten. Nur offene Zahlungen vor diesem Datum werden nicht als Aufgaben angezeigt.</p>
     </section>
 }
 
 @code {
     private HouseholdSettingsDto? settings;
     private string selectedTimeZoneId = string.Empty;
+    private DateOnly selectedTrackingStartDate;
     private string? error;
     private string? info;
 
@@ -60,6 +66,7 @@ else
     {
         settings = await HouseholdSettings.GetAsync();
         selectedTimeZoneId = settings.TimeZoneId;
+        selectedTrackingStartDate = settings.OccurrenceTrackingStartDate;
     }
 
     private async Task SaveAsync()
@@ -67,13 +74,17 @@ else
         error = info = null;
         try
         {
-            settings = await HouseholdSettings.UpdateTimeZoneAsync(selectedTimeZoneId);
+            settings = await HouseholdSettings.UpdateAsync(new(selectedTimeZoneId, selectedTrackingStartDate));
             selectedTimeZoneId = settings.TimeZoneId;
-            info = "Die Haushalts-Zeitzone wurde gespeichert.";
+            selectedTrackingStartDate = settings.OccurrenceTrackingStartDate;
+            info = "Die Haushaltseinstellungen wurden gespeichert.";
         }
         catch (DomainException ex)
         {
             error = ex.Message;
         }
     }
+
+    private void UseCurrentMonth() =>
+        selectedTrackingStartDate = new DateOnly(settings!.Today.Year, settings.Today.Month, 1);
 }

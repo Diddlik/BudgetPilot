@@ -88,8 +88,13 @@
                         <option value="@zone.Id">@zone.DisplayName · @zone.Id</option>
                     }
                 </select></label>
+                <label>Zahlungen verfolgen ab<input class="field" type="date" @bind="occurrenceTrackingStartDate" @bind:format="yyyy-MM-dd" /></label>
                 <p class="hint compact">Heute ist für den Haushalt der <strong>@householdSettings.Today.ToString("dd.MM.yyyy")</strong>. Europe/Berlin berücksichtigt die Sommerzeit automatisch.</p>
-                <div class="form-actions"><button class="button primary" @onclick="SaveHouseholdTimeAsync">Zeitzone speichern</button></div>
+                <p class="hint compact">Ältere Vertragsdaten bleiben erhalten; frühere offene Zahlungen werden nur aus der Aufgabenliste ausgeblendet.</p>
+                <div class="form-actions">
+                    <button class="button secondary" type="button" @onclick="UseCurrentMonth">Ab diesem Monat</button>
+                    <button class="button primary" @onclick="SaveHouseholdSettingsAsync">Speichern</button>
+                </div>
             </div>
         </section>
     }
@@ -136,6 +141,7 @@
     private string appBuild = string.Empty;
     private HouseholdSettingsDto? householdSettings;
     private string householdTimeZoneId = string.Empty;
+    private DateOnly occurrenceTrackingStartDate;
 
     private string BiometricAvailabilityLabel => biometricAvailability switch
     {
@@ -166,6 +172,7 @@
             {
                 householdSettings = await Api.GetHouseholdSettingsAsync();
                 householdTimeZoneId = householdSettings.TimeZoneId;
+                occurrenceTrackingStartDate = householdSettings.OccurrenceTrackingStartDate;
             }
             catch (Exception ex)
             {
@@ -174,17 +181,24 @@
         }
     }
 
-    private async Task SaveHouseholdTimeAsync()
+    private async Task SaveHouseholdSettingsAsync()
     {
         ClearMessages();
         try
         {
-            householdSettings = await Api.UpdateHouseholdSettingsAsync(new UpdateHouseholdSettingsRequest(householdTimeZoneId));
+            householdSettings = await Api.UpdateHouseholdSettingsAsync(
+                new UpdateHouseholdSettingsRequest(householdTimeZoneId, occurrenceTrackingStartDate));
             householdTimeZoneId = householdSettings.TimeZoneId;
-            success = "Die Haushalts-Zeitzone wurde gespeichert.";
+            occurrenceTrackingStartDate = householdSettings.OccurrenceTrackingStartDate;
+            success = "Die Haushaltseinstellungen wurden gespeichert.";
         }
         catch (Exception ex) { error = ex.Message; }
     }
+
+    private void UseCurrentMonth() => occurrenceTrackingStartDate = new DateOnly(
+        householdSettings!.Today.Year,
+        householdSettings.Today.Month,
+        1);
 
     private async Task SavePinAsync()
     {

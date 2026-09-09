@@ -9,6 +9,26 @@ namespace BudgetPilot.Application.Tests;
 public sealed class PlannedOccurrenceServiceTests
 {
     [Fact]
+    public async Task GetOpenAsync_DefaultRangeStartsAtHouseholdTrackingDate()
+    {
+        var store = new InMemoryStore();
+        var category = SeedData.Category("Wohnen");
+        store.Categories.Add(category);
+        store.Items.Add(SeedData.Item("Darlehen", BudgetItemType.Expense, category,
+            SeedData.Version(2018m, BudgetFrequency.Monthly, new DateOnly(2018, 1, 5), paymentDay: 5)));
+        var service = new PlannedOccurrenceService(
+            new FakeBudgetItemRepository(store),
+            new EmptyResolvedOccurrenceStore(),
+            new FakeHouseholdSettingsService(new DateOnly(2026, 9, 1)));
+
+        var result = await service.GetOpenAsync(null, new DateOnly(2026, 10, 31));
+
+        result.Select(x => x.DueDate).Should().Equal(
+            new DateOnly(2026, 9, 5),
+            new DateOnly(2026, 10, 5));
+    }
+
+    [Fact]
     public async Task GetOpenAsync_ReconstructsEveryMissedMonth()
     {
         var store = new InMemoryStore();
@@ -18,7 +38,8 @@ public sealed class PlannedOccurrenceServiceTests
             SeedData.Version(1200m, BudgetFrequency.Monthly, new DateOnly(2026, 1, 5), paymentDay: 5)));
         var service = new PlannedOccurrenceService(
             new FakeBudgetItemRepository(store),
-            new EmptyResolvedOccurrenceStore());
+            new EmptyResolvedOccurrenceStore(),
+            new FakeHouseholdSettingsService(new DateOnly(2026, 1, 1)));
 
         var result = await service.GetOpenAsync(new DateOnly(2026, 1, 1), new DateOnly(2026, 3, 31));
 
@@ -41,7 +62,8 @@ public sealed class PlannedOccurrenceServiceTests
         var resolvedKey = $"{item.Id:N}:2026-02-05";
         var service = new PlannedOccurrenceService(
             new FakeBudgetItemRepository(store),
-            new EmptyResolvedOccurrenceStore(resolvedKey));
+            new EmptyResolvedOccurrenceStore(resolvedKey),
+            new FakeHouseholdSettingsService(new DateOnly(2026, 1, 1)));
 
         var result = await service.GetOpenAsync(new DateOnly(2026, 1, 1), new DateOnly(2026, 3, 31));
 
@@ -63,7 +85,8 @@ public sealed class PlannedOccurrenceServiceTests
         store.Items.Add(item);
         var service = new PlannedOccurrenceService(
             new FakeBudgetItemRepository(store),
-            new EmptyResolvedOccurrenceStore());
+            new EmptyResolvedOccurrenceStore(),
+            new FakeHouseholdSettingsService(new DateOnly(2026, 1, 1)));
 
         var result = await service.GetOpenAsync(new DateOnly(2026, 1, 1), new DateOnly(2026, 4, 30));
 

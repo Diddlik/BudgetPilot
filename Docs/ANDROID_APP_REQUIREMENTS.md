@@ -92,6 +92,10 @@ Die Web-UI nutzt weiter Cookies; `androidNet` nutzt Bearer-Token.
 - **REQ-P1-9 Haushaltszeit.** Aktueller Tag und Monat kommen aus
   `/api/v1/settings/household`, nicht aus der Gerätezeitzone. `androidNet` kann
   die gemeinsame IANA-Zeitzone ändern.
+- **REQ-P1-9a Zahlungsverfolgung.** Ein haushaltsweiter Starttag begrenzt offene
+  Zahlungsaufgaben unabhängig vom historischen Vertragsbeginn. `androidNet`
+  kann den Schnitt ändern oder auf den ersten Tag des aktuellen Monats setzen;
+  frühere Plandaten und bereits aufgelöste Zahlungen bleiben erhalten.
 - **REQ-P1-10 Einfache Positionserfassung.** Die sechs Kernangaben sind direkt
   sichtbar, optionale Angaben bleiben eingeklappt. Vor dem Speichern zeigt die
   App die einmalige beziehungsweise die nächsten drei geplanten Zahlungen.

@@ -17,11 +17,16 @@ public sealed class PlannedOccurrenceService : IPlannedOccurrenceService
 {
     private readonly IBudgetItemRepository items;
     private readonly IResolvedOccurrenceStore resolved;
+    private readonly IHouseholdSettingsService household;
 
-    public PlannedOccurrenceService(IBudgetItemRepository items, IResolvedOccurrenceStore resolved)
+    public PlannedOccurrenceService(
+        IBudgetItemRepository items,
+        IResolvedOccurrenceStore resolved,
+        IHouseholdSettingsService household)
     {
         this.items = items;
         this.resolved = resolved;
+        this.household = household;
     }
 
     public async Task<IReadOnlyList<PlannedOccurrenceDto>> GetOpenAsync(
@@ -30,10 +35,20 @@ public sealed class PlannedOccurrenceService : IPlannedOccurrenceService
         CancellationToken ct = default)
     {
         var allItems = await items.GetAllWithVersionsAsync(ct);
-        var effectiveFrom = from ?? allItems
+        var trackingStart = await household.GetOccurrenceTrackingStartDateAsync(ct);
+        var earliestVersion = allItems
             .SelectMany(item => item.Versions)
             .Select(version => (DateOnly?)version.ValidFrom)
             .Min() ?? to;
+        var effectiveFrom = from ?? trackingStart;
+        if (effectiveFrom < trackingStart)
+        {
+            effectiveFrom = trackingStart;
+        }
+        if (effectiveFrom < earliestVersion)
+        {
+            effectiveFrom = earliestVersion;
+        }
         if (to < effectiveFrom)
         {
             return [];

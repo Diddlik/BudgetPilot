@@ -61,7 +61,8 @@ public sealed class QuickExpenseServiceTests
     private sealed class FixedHouseholdSettingsService(DateOnly today) : IHouseholdSettingsService
     {
         public Task<DateOnly> GetTodayAsync(CancellationToken ct = default) => Task.FromResult(today);
+        public Task<DateOnly> GetOccurrenceTrackingStartDateAsync(CancellationToken ct = default) => Task.FromResult(today);
         public Task<BudgetPilot.Application.Dtos.HouseholdSettingsDto> GetAsync(CancellationToken ct = default) => throw new NotSupportedException();
-        public Task<BudgetPilot.Application.Dtos.HouseholdSettingsDto> UpdateTimeZoneAsync(string timeZoneId, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<BudgetPilot.Application.Dtos.HouseholdSettingsDto> UpdateAsync(BudgetPilot.Application.Requests.UpdateHouseholdSettingsRequest request, CancellationToken ct = default) => throw new NotSupportedException();
     }
 }

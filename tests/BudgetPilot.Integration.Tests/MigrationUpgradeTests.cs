@@ -10,7 +10,7 @@ namespace BudgetPilot.Integration.Tests;
 public sealed class MigrationUpgradeTests
 {
     [Fact]
-    public async Task ExistingDatabase_MigratesToCurrentSchemaAndBackfillsDeactivationDate()
+    public async Task ExistingDatabase_MigratesToCurrentSchemaAndBackfillsTrackingDates()
     {
         await using var connection = new SqliteConnection("DataSource=:memory:");
         await connection.OpenAsync();
@@ -40,6 +40,9 @@ public sealed class MigrationUpgradeTests
         db.ChangeTracker.Clear();
         var item = await db.BudgetItems.SingleAsync(x => x.Id == itemId);
         item.DeactivatedOn.Should().Be(new DateOnly(2026, 9, 8));
+        var settings = await db.HouseholdSettings.SingleAsync();
+        settings.OccurrenceTrackingStartDate.Should().NotBeNull();
+        settings.OccurrenceTrackingStartDate!.Value.Day.Should().Be(1);
         (await db.Database.GetPendingMigrationsAsync()).Should().BeEmpty();
     }
 }

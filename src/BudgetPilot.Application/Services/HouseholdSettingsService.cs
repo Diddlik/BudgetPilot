@@ -1,5 +1,6 @@
 using BudgetPilot.Application.Abstractions;
 using BudgetPilot.Application.Dtos;
+using BudgetPilot.Application.Requests;
 using BudgetPilot.Domain.Entities;
 using BudgetPilot.Domain.Enums;
 using BudgetPilot.Domain.Exceptions;
@@ -10,7 +11,8 @@ public interface IHouseholdSettingsService
 {
     Task<HouseholdSettingsDto> GetAsync(CancellationToken ct = default);
     Task<DateOnly> GetTodayAsync(CancellationToken ct = default);
-    Task<HouseholdSettingsDto> UpdateTimeZoneAsync(string timeZoneId, CancellationToken ct = default);
+    Task<DateOnly> GetOccurrenceTrackingStartDateAsync(CancellationToken ct = default);
+    Task<HouseholdSettingsDto> UpdateAsync(UpdateHouseholdSettingsRequest request, CancellationToken ct = default);
 }
 
 public sealed class HouseholdSettingsService : IHouseholdSettingsService
@@ -29,7 +31,9 @@ public sealed class HouseholdSettingsService : IHouseholdSettingsService
     public async Task<HouseholdSettingsDto> GetAsync(CancellationToken ct = default)
     {
         var id = await GetStoredTimeZoneIdAsync(ct);
-        return CreateDto(id, ResolveTimeZone(id));
+        var zone = ResolveTimeZone(id);
+        var trackingStart = await GetOccurrenceTrackingStartDateAsync(ct);
+        return CreateDto(id, zone, trackingStart);
     }
 
     public async Task<DateOnly> GetTodayAsync(CancellationToken ct = default)
@@ -38,9 +42,22 @@ public sealed class HouseholdSettingsService : IHouseholdSettingsService
         return TodayIn(ResolveTimeZone(id));
     }
 
-    public async Task<HouseholdSettingsDto> UpdateTimeZoneAsync(string timeZoneId, CancellationToken ct = default)
+    public async Task<DateOnly> GetOccurrenceTrackingStartDateAsync(CancellationToken ct = default)
     {
-        var normalized = timeZoneId?.Trim() ?? string.Empty;
+        if (await store.GetOccurrenceTrackingStartDateAsync(ct) is { } stored)
+        {
+            return stored;
+        }
+
+        var today = await GetTodayAsync(ct);
+        return new DateOnly(today.Year, today.Month, 1);
+    }
+
+    public async Task<HouseholdSettingsDto> UpdateAsync(
+        UpdateHouseholdSettingsRequest request,
+        CancellationToken ct = default)
+    {
+        var normalized = request.TimeZoneId?.Trim() ?? string.Empty;
         if (normalized.Length == 0)
         {
             throw new DomainException("Bitte eine Zeitzone auswählen.");
@@ -48,29 +65,38 @@ public sealed class HouseholdSettingsService : IHouseholdSettingsService
 
         var zone = ResolveTimeZone(normalized);
         var portableId = ToIanaId(zone);
-        var previous = await GetStoredTimeZoneIdAsync(ct);
-        if (!string.Equals(previous, portableId, StringComparison.Ordinal))
+        var previousTimeZone = await GetStoredTimeZoneIdAsync(ct);
+        var previousTrackingStart = await GetOccurrenceTrackingStartDateAsync(ct);
+        var trackingStart = request.OccurrenceTrackingStartDate ?? previousTrackingStart;
+        if (trackingStart > TodayIn(zone))
         {
-            await store.SetTimeZoneIdAsync(portableId, ct);
+            throw new DomainException("Der Beginn der Zahlungsverfolgung darf nicht in der Zukunft liegen.");
+        }
+
+        if (!string.Equals(previousTimeZone, portableId, StringComparison.Ordinal)
+            || previousTrackingStart != trackingStart)
+        {
+            await store.SetAsync(portableId, trackingStart, ct);
             await audit.RecordAsync(
                 AuditAction.Updated,
                 "HouseholdSettings",
                 Guid.Empty,
-                "Haushaltszeit",
-                $"Zeitzone: {previous} → {portableId}",
+                "Haushaltseinstellungen",
+                $"Zeitzone: {previousTimeZone} → {portableId}; Zahlungsverfolgung: {previousTrackingStart:yyyy-MM-dd} → {trackingStart:yyyy-MM-dd}",
                 ct);
         }
 
-        return CreateDto(portableId, zone);
+        return CreateDto(portableId, zone, trackingStart);
     }
 
     private async Task<string> GetStoredTimeZoneIdAsync(CancellationToken ct) =>
         await store.GetTimeZoneIdAsync(ct) ?? HouseholdSettings.DefaultTimeZoneId;
 
-    private HouseholdSettingsDto CreateDto(string id, TimeZoneInfo zone) => new(
+    private HouseholdSettingsDto CreateDto(string id, TimeZoneInfo zone, DateOnly trackingStart) => new(
         id,
         zone.DisplayName,
         TodayIn(zone),
+        trackingStart,
         GetAvailableTimeZones());
 
     private DateOnly TodayIn(TimeZoneInfo zone)
