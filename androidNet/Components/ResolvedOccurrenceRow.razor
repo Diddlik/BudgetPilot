@@ -35,7 +35,7 @@
     else
     {
         <div class="occurrence-editor">
-            <p class="wide muted">Die Fälligkeit erscheint danach wieder als offen.</p>
+            <p class="wide muted">Die Fälligkeit wird danach wieder automatisch berücksichtigt.</p>
             <div class="row-actions wide">
                 <button class="small-action danger" disabled="@busy" @onclick="ReopenAsync">Wirklich wieder öffnen</button>
                 <button class="small-action" disabled="@busy" @onclick="Close">Abbrechen</button>
@@ -72,7 +72,7 @@
         }
     }
 
-    private string Status => Resolution.Kind == OccurrenceResolutionKind.Confirmed ? "Bezahlt" : "Entfallen";
+    private string Status => Resolution.Kind == OccurrenceResolutionKind.Confirmed ? "Angepasst" : "Entfallen";
     private string AmountLabel => Resolution.Kind == OccurrenceResolutionKind.Confirmed
         ? (Resolution.ActualAmount ?? 0m).ToString("C", GermanCulture)
         : "–";

@@ -137,14 +137,15 @@ Build- oder Paritäts-Gate mehr.
 3. **P2 — Lesepfade erweitern.** Im `androidNet/`-Track erledigt:
    Monats-/Jahres-/Mehrjahresübersicht, Positionen, Kategorien und
    Aktivitätsprotokoll. Der Client zeigt außerdem die serverseitig
-   berechneten offenen Zahlungen; verpasste Monate bleiben bis zur Auflösung sichtbar.
-   Der Dashboard-Lesepfad zeigt Plan, Ist und Abweichung aus den geschützten
+   berechneten anstehenden Zahlungen ab dem Haushaltstag. Fällige Positionen
+   werden automatisch als erfolgt berücksichtigt und erzeugen keinen Rückstau.
+   Der Dashboard-Lesepfad zeigt den berücksichtigten Haushaltsbuch-Stand aus den geschützten
    `/api/v1/comparisons/monthly`- und `/api/v1/comparisons/yearly`-Verträgen.
 4. **P3 — Schreibpfad.** Im `androidNet/`-Track erledigt:
    Positionen/Versionen anlegen und korrigieren, Status ändern/löschen sowie
    Kategorien anlegen, umbenennen und deaktivieren. Web und `androidNet`
-   können offene Fälligkeiten mit vorausgefülltem oder angepasstem Betrag/Datum
-   bestätigen sowie nach Rückfrage als entfallen markieren. Bearbeitete
+   können für anstehende Fälligkeiten Abweichungen bei Betrag/Datum erfassen
+   sowie sie nach Rückfrage als entfallen markieren. Bearbeitete
    Fälligkeiten bleiben sichtbar, können korrigiert und sicher wieder geöffnet werden.
    Beide aktiven Oberflächen bieten außerdem eine prominente Schnellausgabe: Betrag und
    Kategorie genügen, Budgetposition und Notiz bleiben optional. Eine beim Öffnen

@@ -195,11 +195,9 @@ Ein BudgetItem kann mehrere Versionen haben.
 
 ### 7.3 ActualTransaction
 
-Eine ActualTransaction beschreibt eine echte Buchung oder tatsächliche Ausgabe.
-
-Diese ist für spätere Plan/Ist-Vergleiche vorgesehen.
-
-Für den MVP kann die Tabelle bereits vorbereitet werden, die UI dafür ist aber optional.
+Eine ActualTransaction beschreibt eine zusätzliche Einzelbuchung oder eine
+Abweichung von einer fälligen Budgetposition. Unveränderte fällige Positionen
+gelten automatisch als erfolgt und werden nicht redundant materialisiert.
 
 ### 7.4 Budget-Sicht
 
@@ -1246,17 +1244,13 @@ Nicht zwingend im ersten MVP:
 
 ## 21. Mögliche spätere Erweiterungen
 
-## 21.1 Plan/Ist-Vergleich
+## 21.1 Automatisch berücksichtigter Haushaltsbuch-Stand
 
-Später sollen echte Buchungen erfasst werden können.
-
-Dann kann verglichen werden:
-
-```text
-Geplante Ausgaben
-Tatsächliche Ausgaben
-Differenz
-```
+BudgetPilot verlangt keine monatliche Bestätigung wiederkehrender Positionen.
+Bis zum aktuellen Haushaltstag gelten fällige Einnahmen und Ausgaben mit ihrem
+hinterlegten Betrag als erfolgt. Nur ein abweichender Betrag oder Zahlungstag,
+ein Ausfall sowie zusätzliche Einzelausgaben werden separat gespeichert.
+Zukünftige Positionen bleiben erwartete Cashflow-Einträge.
 
 ## 21.2 CSV-Import
 
@@ -1528,4 +1522,4 @@ Die technische Umsetzung soll zuerst als .NET/Blazor-Web-App erfolgen.
 
 Die Anwendung soll mobil nutzbar sein und später als PWA erweitert werden können.
 
-Die erste Implementierung soll bewusst klein bleiben, aber die Architektur muss so aufgebaut werden, dass spätere Funktionen wie Bankimport, Plan/Ist-Vergleich, Kategorienregeln und Android-App möglich sind.
+Die erste Implementierung soll bewusst klein bleiben, aber die Architektur muss so aufgebaut werden, dass spätere Funktionen wie Bankimport, Abweichungsabgleich, Kategorienregeln und Android-App möglich sind.

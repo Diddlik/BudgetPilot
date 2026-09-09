@@ -1,45 +1,26 @@
 <section class="panel comparison-panel">
     <div class="panel-header">
         <div>
-            <p class="eyebrow">Cashflow-Vergleich</p>
-            <h2>Plan und Ist</h2>
+            <p class="eyebrow">Haushaltsbuch</p>
+            <h2>Berücksichtigter Stand</h2>
         </div>
     </div>
     <div class="comparison-grid">
         <article class="comparison-card">
-            <strong>Einnahmen</strong><span>Plan @Money(Comparison.PlannedIncome)</span><span>Ist @Money(Comparison.ActualIncome)</span>
-            <span class="@VarianceClass(Comparison.IncomeVariance, true)">@VarianceText(Comparison.IncomeVariance)</span>
+            <strong>Einnahmen</strong><span>@Money(Comparison.ActualIncome)</span>
         </article>
         <article class="comparison-card">
-            <strong>Ausgaben</strong><span>Plan @Money(Comparison.PlannedExpense)</span><span>Ist @Money(Comparison.ActualExpense)</span>
-            <span class="@VarianceClass(Comparison.ExpenseVariance, false)">@VarianceText(Comparison.ExpenseVariance)</span>
+            <strong>Ausgaben</strong><span>@Money(Comparison.ActualExpense)</span>
         </article>
         <article class="comparison-card">
-            <strong>Saldo</strong><span>Plan @Money(Comparison.PlannedBalance)</span><span>Ist @Money(Comparison.ActualBalance)</span>
-            <span class="@VarianceClass(Comparison.BalanceVariance, true)">@VarianceText(Comparison.BalanceVariance)</span>
+            <strong>Saldo</strong><span>@Money(Comparison.ActualBalance)</span>
         </article>
     </div>
-    <details class="comparison-categories">
-        <summary>Abweichung nach Kategorie</summary>
-        @foreach (var category in Comparison.Categories)
-        {
-            <div class="comparison-row">
-                <strong>@category.CategoryName</strong>
-                <span>Plan @Money(category.PlannedExpense)</span>
-                <span>Ist @Money(category.ActualExpense)</span>
-                <span class="@VarianceClass(category.ExpenseVariance, false)">@VarianceText(category.ExpenseVariance)</span>
-            </div>
-        }
-    </details>
+    <p class="muted">Fällige Budgetpositionen werden automatisch berücksichtigt. Gespeichert werden nur Abweichungen und Ausfälle.</p>
 </section>
 
 @code {
     [Parameter, EditorRequired] public PlanActualComparisonDto Comparison { get; set; } = null!;
     private static readonly CultureInfo GermanCulture = CultureInfo.GetCultureInfo("de-DE");
     private static string Money(decimal value) => value.ToString("C", GermanCulture);
-    private static string VarianceText(decimal value) => value == 0 ? "im Plan" : $"{value:+0.00;-0.00} €";
-    private static string VarianceClass(decimal value, bool positiveIsGood) => value == 0
-        ? "variance neutral"
-        : (value > 0) == positiveIsGood ? "variance good" : "variance bad";
-
 }

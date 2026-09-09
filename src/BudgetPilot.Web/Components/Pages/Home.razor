@@ -31,21 +31,21 @@ else
 
     @if (DisplayedComparison is { } comparison)
     {
-        <PlanActualSummary Comparison="comparison" ShowCategories="false" />
+        <PlanActualSummary Comparison="comparison" />
     }
 
     <section class="panel occurrence-panel">
         <header class="panel-header">
             <div>
-                <p class="eyebrow">Nichts geht verloren</p>
-                <h2>Offene Zahlungen</h2>
+                <p class="eyebrow">Automatisch berücksichtigt</p>
+                <h2>Anstehende Zahlungen</h2>
             </div>
-            <span>@openOccurrences.Count offen</span>
+            <span>@openOccurrences.Count anstehend</span>
         </header>
 
         @if (openOccurrences.Count == 0)
         {
-            <p class="muted">Alles im Blick – aktuell ist keine Zahlung offen.</p>
+            <p class="muted">Im nächsten Monat steht aktuell keine Zahlung an.</p>
         }
         else
         {
@@ -73,7 +73,7 @@ else
         <section class="panel resolved-panel">
             <header class="panel-header">
                 <div>
-                    <p class="eyebrow">Sicher korrigierbar</p>
+                    <p class="eyebrow">Abweichungen und Ausfälle</p>
                     <h2>Zuletzt bearbeitet</h2>
                 </div>
                 <span>@recentResolutions.Count Einträge</span>
@@ -215,7 +215,7 @@ else
 
     private async Task ReloadOccurrencesAsync()
     {
-        openOccurrences = await Occurrences.GetOpenAsync(null, today.AddMonths(1));
+        openOccurrences = await Occurrences.GetOpenAsync(today, today.AddMonths(1));
         recentResolutions = await Actions.GetRecentAsync(10);
         monthComparison = await Comparisons.GetMonthlyAsync(today.Year, today.Month);
         yearComparison = await Comparisons.GetYearlyAsync(today.Year);

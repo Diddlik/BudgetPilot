@@ -11,6 +11,11 @@ public interface IPlannedOccurrenceService
         DateOnly? from,
         DateOnly to,
         CancellationToken ct = default);
+
+    Task<IReadOnlyList<PlannedOccurrenceDto>> GetAssumedActualsAsync(
+        DateOnly from,
+        DateOnly to,
+        CancellationToken ct = default);
 }
 
 public sealed class PlannedOccurrenceService : IPlannedOccurrenceService
@@ -34,16 +39,30 @@ public sealed class PlannedOccurrenceService : IPlannedOccurrenceService
         DateOnly to,
         CancellationToken ct = default)
     {
-        var allItems = await items.GetAllWithVersionsAsync(ct);
         var trackingStart = await household.GetOccurrenceTrackingStartDateAsync(ct);
+        return await GetUnresolvedAsync(from ?? trackingStart, to, trackingStart, ct);
+    }
+
+    public Task<IReadOnlyList<PlannedOccurrenceDto>> GetAssumedActualsAsync(
+        DateOnly from,
+        DateOnly to,
+        CancellationToken ct = default) => GetUnresolvedAsync(from, to, null, ct);
+
+    private async Task<IReadOnlyList<PlannedOccurrenceDto>> GetUnresolvedAsync(
+        DateOnly from,
+        DateOnly to,
+        DateOnly? lowerBound,
+        CancellationToken ct)
+    {
+        var allItems = await items.GetAllWithVersionsAsync(ct);
         var earliestVersion = allItems
             .SelectMany(item => item.Versions)
             .Select(version => (DateOnly?)version.ValidFrom)
             .Min() ?? to;
-        var effectiveFrom = from ?? trackingStart;
-        if (effectiveFrom < trackingStart)
+        var effectiveFrom = from;
+        if (lowerBound is { } start && effectiveFrom < start)
         {
-            effectiveFrom = trackingStart;
+            effectiveFrom = start;
         }
         if (effectiveFrom < earliestVersion)
         {

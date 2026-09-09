@@ -1,6 +1,7 @@
 using BudgetPilot.Application.Abstractions;
 using BudgetPilot.Application.Dtos;
 using BudgetPilot.Application.Services;
+using BudgetPilot.Application.Tests.Fakes;
 using BudgetPilot.Domain.Entities;
 using BudgetPilot.Domain.Enums;
 using BudgetPilot.Domain.Exceptions;
@@ -37,7 +38,7 @@ public sealed class PlanActualComparisonServiceTests
             Transaction(new DateOnly(2026, 3, 4), 80m, BudgetItemType.Expense, foodId, "Lebensmittel"),
         ]);
 
-        var result = await new PlanActualComparisonService(projection, actuals)
+        var result = await Service(projection, actuals)
             .GetMonthlyAsync(2026, 3);
 
         result.PlannedIncome.Should().Be(3_000m);
@@ -75,7 +76,7 @@ public sealed class PlanActualComparisonServiceTests
         var actuals = new StubActualTransactionStore(
         [Transaction(new DateOnly(2026, 6, 1), 11_500m, BudgetItemType.Expense, categoryId, "Wohnen")]);
 
-        var result = await new PlanActualComparisonService(projection, actuals).GetYearlyAsync(2026);
+        var result = await Service(projection, actuals).GetYearlyAsync(2026);
 
         result.Month.Should().BeNull();
         result.PlannedExpense.Should().Be(12_000m);
@@ -86,7 +87,7 @@ public sealed class PlanActualComparisonServiceTests
     [Fact]
     public async Task MonthlyComparison_RejectsInvalidMonth()
     {
-        var service = new PlanActualComparisonService(
+        var service = Service(
             new StubProjectionService(new MonthlyBudgetProjectionDto()),
             new StubActualTransactionStore([]));
 
@@ -95,6 +96,56 @@ public sealed class PlanActualComparisonServiceTests
         await action.Should().ThrowAsync<DomainException>()
             .WithMessage("Der Monat muss zwischen 1 und 12 liegen.");
     }
+
+    [Fact]
+    public async Task MonthlyComparison_AssumesUnchangedDueOccurrencesAreActual()
+    {
+        var incomeCategoryId = Guid.NewGuid();
+        var expenseCategoryId = Guid.NewGuid();
+        var projection = new StubProjectionService(new MonthlyBudgetProjectionDto
+        {
+            Year = 2026,
+            Month = 8,
+            TotalIncome = 3_000m,
+            TotalExpense = 1_200m,
+            Balance = 1_800m,
+            Categories = [new() { CategoryId = expenseCategoryId, CategoryName = "Wohnen", TotalAmount = 1_200m }],
+        });
+        var assumed = new StubOccurrenceService([
+            Occurrence(incomeCategoryId, "Einkommen", BudgetItemType.Income, 3_000m, new DateOnly(2026, 8, 1)),
+            Occurrence(expenseCategoryId, "Wohnen", BudgetItemType.Expense, 1_200m, new DateOnly(2026, 8, 5)),
+        ]);
+
+        var result = await Service(
+            projection,
+            new StubActualTransactionStore([]),
+            assumed,
+            new DateOnly(2026, 9, 1)).GetMonthlyAsync(2026, 8);
+
+        result.ActualIncome.Should().Be(3_000m);
+        result.ActualExpense.Should().Be(1_200m);
+        result.ActualBalance.Should().Be(1_800m);
+        result.Categories.Single().ActualExpense.Should().Be(1_200m);
+        assumed.RequestedRange.Should().Be((new DateOnly(2026, 8, 1), new DateOnly(2026, 8, 31)));
+    }
+
+    private static PlanActualComparisonService Service(
+        IBudgetProjectionService projection,
+        IActualTransactionStore actuals,
+        IPlannedOccurrenceService? occurrences = null,
+        DateOnly? today = null) => new(
+            projection,
+            actuals,
+            occurrences ?? new StubOccurrenceService([]),
+            new FakeHouseholdSettingsService(today ?? new DateOnly(2026, 12, 31)));
+
+    private static PlannedOccurrenceDto Occurrence(
+        Guid categoryId,
+        string categoryName,
+        BudgetItemType type,
+        decimal amount,
+        DateOnly dueDate) => new(
+            Guid.NewGuid().ToString("N"), Guid.NewGuid(), categoryName, categoryId, categoryName, type, dueDate, amount);
 
     private static ActualTransaction Transaction(
         DateOnly date, decimal amount, BudgetItemType type, Guid categoryId, string categoryName) => new()
@@ -115,6 +166,22 @@ public sealed class PlanActualComparisonServiceTests
 
         public Task<ActualTransactionWriteResult> AddAsync(
             ActualTransaction transaction, CancellationToken ct = default) => throw new NotSupportedException();
+    }
+
+    private sealed class StubOccurrenceService(IReadOnlyList<PlannedOccurrenceDto> occurrences)
+        : IPlannedOccurrenceService
+    {
+        public (DateOnly From, DateOnly To)? RequestedRange { get; private set; }
+
+        public Task<IReadOnlyList<PlannedOccurrenceDto>> GetOpenAsync(
+            DateOnly? from, DateOnly to, CancellationToken ct = default) => throw new NotSupportedException();
+
+        public Task<IReadOnlyList<PlannedOccurrenceDto>> GetAssumedActualsAsync(
+            DateOnly from, DateOnly to, CancellationToken ct = default)
+        {
+            RequestedRange = (from, to);
+            return Task.FromResult(occurrences);
+        }
     }
 
     private sealed class StubProjectionService(

@@ -8,7 +8,7 @@
 
 <header class="page-header">
     <div>
-        <p class="eyebrow">Monatsplanung</p>
+        <p class="eyebrow">Haushaltsbudget</p>
         <h1>Monatsübersicht</h1>
     </div>
     <div class="header-actions">
@@ -30,7 +30,7 @@
 }
 else
 {
-    @if (comparison is not null)
+    @if (comparison is not null && CurrentMonth <= new DateOnly(today.Year, today.Month, 1))
     {
         <PlanActualSummary Comparison="comparison" />
     }
@@ -93,6 +93,7 @@ else
 @code {
     private readonly CultureInfo culture = CultureInfo.GetCultureInfo("de-DE");
     private DateOnly CurrentMonth { get; set; }
+    private DateOnly today;
     private BudgetViewMode ViewMode { get; set; } = BudgetViewMode.Budget;
     private MonthlyBudgetProjectionDto? projection;
     private PlanActualComparisonDto? comparison;
@@ -102,7 +103,7 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        var today = await HouseholdSettings.GetTodayAsync();
+        today = await HouseholdSettings.GetTodayAsync();
         CurrentMonth = new DateOnly(today.Year, today.Month, 1);
         await LoadAsync();
     }

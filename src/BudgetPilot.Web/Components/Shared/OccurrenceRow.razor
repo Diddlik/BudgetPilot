@@ -13,7 +13,7 @@
     @if (mode is null)
     {
         <div class="occurrence-actions">
-            <button class="button primary compact" disabled="@busy" @onclick="() => mode = ActionMode.Confirm">Bestätigen</button>
+            <button class="button primary compact" disabled="@busy" @onclick="() => mode = ActionMode.Confirm">Abweichung</button>
             <button class="button secondary compact" disabled="@busy" @onclick="() => mode = ActionMode.Skip">Entfallen</button>
         </div>
     }
@@ -24,7 +24,7 @@
             <label>Bezahlt am<input class="field" type="date" @bind="actualDate" /></label>
             <label class="wide">Notiz (optional)<input class="field" maxlength="500" @bind="note" /></label>
             <div class="occurrence-actions wide">
-                <button class="button primary compact" disabled="@busy" @onclick="ConfirmAsync">Als bezahlt speichern</button>
+                <button class="button primary compact" disabled="@busy" @onclick="ConfirmAsync">Abweichung speichern</button>
                 <button class="button secondary compact" disabled="@busy" @onclick="Close">Abbrechen</button>
             </div>
         </div>
@@ -70,9 +70,9 @@
         }
     }
 
-    private string DueLabel => Occurrence.DueDate < Today
-        ? "Überfällig"
-        : Occurrence.DueDate == Today ? "Heute" : "Geplant";
+    private string DueLabel => Occurrence.DueDate <= Today
+        ? "Automatisch berücksichtigt"
+        : "Erwartet";
 
     private async Task ConfirmAsync() => await ExecuteAsync(() => Actions.ConfirmAsync(
         Occurrence.BudgetItemId,

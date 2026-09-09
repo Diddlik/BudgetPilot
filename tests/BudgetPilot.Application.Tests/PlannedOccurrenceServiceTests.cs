@@ -29,6 +29,28 @@ public sealed class PlannedOccurrenceServiceTests
     }
 
     [Fact]
+    public async Task GetAssumedActualsAsync_IgnoresTrackingStartButExcludesResolvedOccurrences()
+    {
+        var store = new InMemoryStore();
+        var category = SeedData.Category("Wohnen");
+        var item = SeedData.Item("Miete", BudgetItemType.Expense, category,
+            SeedData.Version(1200m, BudgetFrequency.Monthly, new DateOnly(2026, 1, 5), paymentDay: 5));
+        store.Categories.Add(category);
+        store.Items.Add(item);
+        var service = new PlannedOccurrenceService(
+            new FakeBudgetItemRepository(store),
+            new EmptyResolvedOccurrenceStore($"{item.Id:N}:2026-02-05"),
+            new FakeHouseholdSettingsService(new DateOnly(2026, 9, 1)));
+
+        var result = await service.GetAssumedActualsAsync(
+            new DateOnly(2026, 1, 1), new DateOnly(2026, 3, 31));
+
+        result.Select(x => x.DueDate).Should().Equal(
+            new DateOnly(2026, 1, 5),
+            new DateOnly(2026, 3, 5));
+    }
+
+    [Fact]
     public async Task GetOpenAsync_ReconstructsEveryMissedMonth()
     {
         var store = new InMemoryStore();

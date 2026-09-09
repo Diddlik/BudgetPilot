@@ -35,7 +35,7 @@
     else
     {
         <div class="occurrence-editor">
-            <p class="wide muted">Die Bearbeitung wird zurückgenommen. Die Fälligkeit erscheint danach wieder unter „Offene Zahlungen“.</p>
+            <p class="wide muted">Die Bearbeitung wird zurückgenommen. Die Fälligkeit erscheint danach wieder unter „Anstehende Zahlungen“.</p>
             <div class="occurrence-actions wide">
                 <button class="button danger compact" disabled="@busy" @onclick="ReopenAsync">Wirklich wieder öffnen</button>
                 <button class="button secondary compact" disabled="@busy" @onclick="Close">Abbrechen</button>
@@ -72,7 +72,7 @@
         }
     }
 
-    private string Status => Resolution.Kind == OccurrenceResolutionKind.Confirmed ? "Bezahlt" : "Entfallen";
+    private string Status => Resolution.Kind == OccurrenceResolutionKind.Confirmed ? "Angepasst" : "Entfallen";
     private string AmountLabel => Resolution.Kind == OccurrenceResolutionKind.Confirmed
         ? Money(Resolution.ActualAmount ?? 0m)
         : "–";

@@ -33,7 +33,7 @@
     }
     else if (projection is not null)
     {
-        @if (comparison is not null)
+        @if (comparison is not null && currentMonth <= new DateTime(today.Year, today.Month, 1))
         {
             <PlanActualSummary Comparison="comparison" />
         }
@@ -41,14 +41,14 @@
         <section class="panel">
             <div class="panel-header">
                 <div>
-                    <p class="eyebrow">Nichts geht verloren</p>
-                    <h2>Offene Zahlungen</h2>
+                    <p class="eyebrow">Automatisch berücksichtigt</p>
+                    <h2>Anstehende Zahlungen</h2>
                 </div>
-                <span>@openOccurrences.Count offen</span>
+                <span>@openOccurrences.Count anstehend</span>
             </div>
             @if (openOccurrences.Count == 0)
             {
-                <p class="muted">Alles im Blick – aktuell ist keine Zahlung offen.</p>
+                <p class="muted">Im nächsten Monat steht aktuell keine Zahlung an.</p>
             }
             else
             {
@@ -76,7 +76,7 @@
             <section class="panel">
                 <div class="panel-header">
                     <div>
-                        <p class="eyebrow">Sicher korrigierbar</p>
+                        <p class="eyebrow">Abweichungen und Ausfälle</p>
                         <h2>Zuletzt bearbeitet</h2>
                     </div>
                     <span>@recentResolutions.Count Einträge</span>

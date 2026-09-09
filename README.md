@@ -3,7 +3,8 @@
 BudgetPilot ist eine selbst gehostete Haushaltsbudget-App für wiederkehrende und
 einmalige Einnahmen und Ausgaben. Budgetregeln sind zeitlich versioniert:
 Änderungen gelten ab einem Stichtag, ohne historische Monate nachträglich zu
-verändern.
+verändern. Fällige Positionen werden automatisch als erfolgt berücksichtigt;
+gespeichert werden nur Abweichungen, Ausfälle und zusätzliche Einzelausgaben.
 
 Die App bietet zwei Sichtweisen:
 
@@ -30,8 +31,9 @@ Datums- und Zahlenformate.
 
 ## Funktionen
 
-- Monats-, Jahres- und Mehrjahresplanung
+- Monats-, Jahres- und Mehrjahresübersicht
 - Budget- und Cashflow-Sicht
+- Automatische Übernahme fälliger Budgetpositionen ohne monatliche Bestätigung
 - Monatliche, quartalsweise, jährliche und einmalige Budgetpositionen
 - Historisch sichere Versionierung ab einem frei wählbaren Stichtag
 - Separater Start der Zahlungsverfolgung, damit alte Vertragsdaten keine rückwirkende Aufgabenliste erzeugen

@@ -108,7 +108,7 @@ public static class DataEndpoints
         v1.MapGet("/budget-items/{id:guid}/schedule", (Guid id, int from, int to, IBudgetProjectionService p, CancellationToken ct)
             => p.GetPaymentScheduleAsync(id, from, to, ct));
 
-        // ── Offene Zahlungen ───────────────────────────────────────────
+        // ── Anstehende Zahlungen und Abweichungen ─────────────────────
         v1.MapGet("/occurrences/open", async (
             DateOnly? from,
             DateOnly? to,
@@ -117,7 +117,7 @@ public static class DataEndpoints
             CancellationToken ct) =>
         {
             var today = await household.GetTodayAsync(ct);
-            return await occurrences.GetOpenAsync(from, to ?? today.AddMonths(1), ct);
+            return await occurrences.GetOpenAsync(from ?? today, to ?? today.AddMonths(1), ct);
         });
         v1.MapPost("/occurrences/{budgetItemId:guid}/{plannedDueDate}/confirm", (
             Guid budgetItemId,
