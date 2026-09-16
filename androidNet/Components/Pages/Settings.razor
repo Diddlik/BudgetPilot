@@ -267,7 +267,7 @@
         try
         {
             await Session.SetBaseUrlAsync(baseUrl);
-            await Session.ClearAsync();
+            await Session.ClearAsync(expired: false);
             await Cache.ClearAsync();
             Navigation.NavigateTo("/", replace: true);
         }
@@ -284,7 +284,7 @@
 
     private async Task LogoutAsync()
     {
-        await Session.ClearAsync();
+        await Session.ClearAsync(expired: false);
         Navigation.NavigateTo("/", replace: true);
     }
 

@@ -1,5 +1,7 @@
 @page "/unlock"
 @inject AppLockService AppLock
+@inject AppSession Session
+@inject BudgetPilotApiClient Api
 @inject BiometricAuthenticationService Biometrics
 @inject MobilePreferences MobilePreferences
 @inject NavigationManager Navigation
@@ -27,7 +29,7 @@
         <label>
             App-PIN
             <input class="field pin-field" type="password" inputmode="numeric" autocomplete="off"
-                   minlength="4" maxlength="8" required autofocus @bind="pin" />
+                   minlength="4" maxlength="8" required autofocus="@(!Biometrics.IsEnabled)" @bind="pin" />
         </label>
         @if (Biometrics.IsEnabled)
         {
@@ -49,16 +51,17 @@
 
     protected override async Task OnInitializedAsync()
     {
+        await Session.LoadAsync();
         await AppLock.LoadAsync();
-        if (!AppLock.IsEnabled || AppLock.IsUnlocked)
+        if (!Session.IsSignedIn || !AppLock.IsEnabled || AppLock.IsUnlocked)
         {
-            Navigation.NavigateTo(MobilePreferences.StartRoute, replace: true);
+            Navigation.NavigateTo(await NextRouteAsync(), replace: true);
         }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender && Biometrics.IsEnabled && !biometricAttempted)
+        if (firstRender && Session.IsSignedIn && Biometrics.IsEnabled && !biometricAttempted)
         {
             biometricAttempted = true;
             await UnlockBiometricallyAsync();
@@ -70,7 +73,7 @@
         error = await AppLock.UnlockAsync(pin) ? null : "Die eingegebene App-PIN ist falsch.";
         if (error is null)
         {
-            Navigation.NavigateTo(MobilePreferences.StartRoute, replace: true);
+            Navigation.NavigateTo(await NextRouteAsync(), replace: true);
         }
     }
 
@@ -85,7 +88,7 @@
             if (result.Success)
             {
                 AppLock.UnlockAfterBiometricAuthentication();
-                Navigation.NavigateTo(MobilePreferences.StartRoute, replace: true);
+                Navigation.NavigateTo(await NextRouteAsync(), replace: true);
             }
             else if (!result.Cancelled)
             {
@@ -93,5 +96,12 @@
             }
         }
         finally { biometricBusy = false; }
+    }
+
+    // Beim Entsperren die Tokens erneuern; eine abgelaufene Sitzung fuehrt zur Anmeldung.
+    private async Task<string> NextRouteAsync()
+    {
+        await Api.EnsureFreshSessionAsync();
+        return Session.IsSignedIn ? MobilePreferences.StartRoute : "/";
     }
 }

@@ -12,6 +12,9 @@ public sealed class AppSession
     public string? RefreshToken { get; private set; }
     public string? AccountEmail { get; private set; }
     public bool IsLoaded { get; private set; }
+
+    /// <summary>Die Sitzung wurde in diesem App-Lauf ungültig, nicht vom Nutzer beendet.</summary>
+    public bool SessionExpired { get; private set; }
     public bool IsSignedIn => !string.IsNullOrWhiteSpace(BaseUrl)
         && !string.IsNullOrWhiteSpace(AccessToken)
         && !string.IsNullOrWhiteSpace(RefreshToken);
@@ -51,6 +54,7 @@ public sealed class AppSession
     {
         AccessToken = response.AccessToken;
         RefreshToken = response.RefreshToken;
+        SessionExpired = false;
         IsLoaded = true;
 
         await SecureStorage.Default.SetAsync(AccessTokenKey, response.AccessToken);
@@ -64,13 +68,16 @@ public sealed class AppSession
         return Task.CompletedTask;
     }
 
-    public Task ClearAsync()
+    public Task ClearAsync(bool expired = true)
     {
+        SessionExpired = expired;
         AccessToken = null;
         RefreshToken = null;
         SecureStorage.Default.Remove(AccessTokenKey);
         SecureStorage.Default.Remove(RefreshTokenKey);
         return Task.CompletedTask;
     }
+
+    public void AcknowledgeExpiry() => SessionExpired = false;
 
 }

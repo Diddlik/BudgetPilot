@@ -1,6 +1,7 @@
 @inherits LayoutComponentBase
 @implements IDisposable
 @inject AppLockService AppLock
+@inject AppSession Session
 @inject NavigationManager Navigation
 
 @if (isReady)
@@ -16,6 +17,7 @@
     protected override async Task OnInitializedAsync()
     {
         AppLock.StateChanged += HandleLockChanged;
+        await Session.LoadAsync();
         await AppLock.LoadAsync();
         isReady = true;
         EnforceLock();
@@ -33,7 +35,8 @@
     private void EnforceLock()
     {
         var relative = Navigation.ToBaseRelativePath(Navigation.Uri);
-        if (AppLock.IsEnabled && !AppLock.IsUnlocked && !relative.StartsWith("unlock", StringComparison.Ordinal))
+        // Ohne Sitzung gibt es nichts zu schützen - dann direkt zur Anmeldung statt PIN-Abfrage.
+        if (Session.IsSignedIn && AppLock.IsEnabled && !AppLock.IsUnlocked && !relative.StartsWith("unlock", StringComparison.Ordinal))
         {
             Navigation.NavigateTo("/unlock", replace: true);
         }

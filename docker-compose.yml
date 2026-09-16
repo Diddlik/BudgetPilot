@@ -15,4 +15,6 @@ services:
       # Single private login account (seeded on first start). Set these in .env.
       - Auth__Email=${BP_AUTH_EMAIL:?set BP_AUTH_EMAIL in .env}
       - Auth__Password=${BP_AUTH_PASSWORD:?set BP_AUTH_PASSWORD in .env}
+      # Wie lange die Android-App ohne erneute Anmeldung auskommt (Default 90 Tage).
+      - Auth__RefreshTokenLifetimeDays=${BP_REFRESH_TOKEN_DAYS:-90}
     restart: unless-stopped

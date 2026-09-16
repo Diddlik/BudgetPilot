@@ -70,6 +70,11 @@ Docker deployments persist ASP.NET Core Data Protection keys under
 `/app/data/keys`, so cookie and bearer refresh tokens remain valid across container
 updates. An expired or otherwise invalid refresh token returns `401` without a
 cookie-login redirect; mobile clients clear the session and request a new login.
+The bearer refresh-token lifetime is `Auth:RefreshTokenLifetimeDays` (default 90,
+overriding the ASP.NET default of 14); `androidNet` calls
+`BudgetPilotApiClient.EnsureFreshSessionAsync()` on unlock and on app start, so the
+window rolls forward with every use. An offline renewal attempt must never sign the
+user out — only a `401` from `/api/auth/refresh` clears the session.
 
 **JSON API (for the mobile clients):** a versioned REST API lives in
 `src/BudgetPilot.Web/Api/` — `AuthEndpoints.cs` maps `/api/auth/login` + `/refresh`

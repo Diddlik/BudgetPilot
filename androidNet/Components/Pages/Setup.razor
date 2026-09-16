@@ -33,6 +33,12 @@
         {
             <div class="alert" role="alert">@error</div>
         }
+        else if (sessionExpired)
+        {
+            <div class="alert" role="status">
+                Deine Sitzung ist abgelaufen. Bitte melde dich erneut an - deine App-PIN bleibt bestehen.
+            </div>
+        }
 
         <div class="form-field">
             <label for="instance-host">Instanz</label>
@@ -104,10 +110,13 @@
     private string? error;
     private bool isBusy;
     private bool showPassword;
+    private bool sessionExpired;
 
     protected override async Task OnInitializedAsync()
     {
         await Session.LoadAsync();
+        sessionExpired = Session.SessionExpired;
+        Session.AcknowledgeExpiry();
 
         if (!string.IsNullOrWhiteSpace(Session.BaseUrl))
         {
@@ -118,7 +127,15 @@
 
         if (Session.IsSignedIn)
         {
-            Navigation.NavigateTo(Preferences.StartRoute, replace: true);
+            // Ohne App-Sperre ist das hier der Start der App - auch dann die Tokens erneuern.
+            await Api.EnsureFreshSessionAsync();
+            if (Session.IsSignedIn)
+            {
+                Navigation.NavigateTo(Preferences.StartRoute, replace: true);
+                return;
+            }
+            sessionExpired = Session.SessionExpired;
+            Session.AcknowledgeExpiry();
         }
     }
 

@@ -29,6 +29,20 @@ public sealed class BudgetPilotApiClient
     public bool LastReadWasOffline { get; private set; }
     public DateTime? LastCacheTimestamp { get; private set; }
 
+    /// <summary>
+    /// Erneuert die Tokens proaktiv beim Entsperren/Start, damit das Ablauffenster des
+    /// Refresh-Tokens bei jeder App-Nutzung weiterrollt. Offline bleibt die Sitzung bestehen -
+    /// nur eine vom Server abgelehnte Erneuerung meldet ab.
+    /// </summary>
+    public async Task EnsureFreshSessionAsync(CancellationToken cancellationToken = default)
+    {
+        await session.LoadAsync();
+        if (session.IsSignedIn)
+        {
+            await RefreshAsync(cancellationToken);
+        }
+    }
+
     public async Task LoginAsync(string email, string password, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))

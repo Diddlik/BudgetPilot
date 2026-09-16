@@ -39,6 +39,13 @@ public sealed class BiometricAuthenticationService
             return new(false, false, "Das Android-Fenster ist noch nicht bereit.");
         }
 
+        // Nach dem Resume ist die Activity kurz noch nicht bereit; ein Prompt darauf bricht sofort ab.
+        for (var attempt = 0; attempt < 20 && !activity.Lifecycle.CurrentState.IsAtLeast(
+                 AndroidX.Lifecycle.Lifecycle.State.Resumed!); attempt++)
+        {
+            await Task.Delay(50, cancellationToken);
+        }
+
         var completion = new TaskCompletionSource<BiometricAuthenticationResult>(
             TaskCreationOptions.RunContinuationsAsynchronously);
         var callback = new AuthenticationCallback(completion);

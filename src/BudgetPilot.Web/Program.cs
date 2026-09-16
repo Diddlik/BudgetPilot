@@ -50,7 +50,15 @@ builder.Services.AddAuthentication(options =>
         options.DefaultScheme = IdentityConstants.ApplicationScheme;
         options.DefaultSignInScheme = IdentityConstants.ApplicationScheme;
     })
-    .AddBearerToken(IdentityConstants.BearerScheme) // Token-Auth für die Android-API (/api/*)
+    .AddBearerToken(IdentityConstants.BearerScheme, options =>
+    {
+        // Token-Auth für die Android-App (/api/*). Der Client erneuert die Tokens bei jedem
+        // Entsperren, das Fenster rollt also mit der Nutzung weiter. Der Default von 14 Tagen
+        // erzwingt bei seltener Nutzung eine erneute Anmeldung - für den privaten
+        // Single-Haushalt konfigurierbar über Auth:RefreshTokenLifetimeDays.
+        options.RefreshTokenExpiration = TimeSpan.FromDays(
+            builder.Configuration.GetValue("Auth:RefreshTokenLifetimeDays", 90));
+    })
     .AddIdentityCookies();
 
 builder.Services.AddIdentityCore<IdentityUser>(options =>
