@@ -113,7 +113,9 @@ is deployed from `site/` via `.github/workflows/pages.yml` to
 `https://diddlik.github.io/BudgetPilot/privacy/` and linked from mobile settings.
 
 **Play Store status:** `Budget Pilot` / `de.budgetpilot.mobile` is live in
-**closed testing (Alpha)** with `1.0.40` / versionCode 40; production is
+**closed testing (Alpha)**; every push to `main` uploads a new build there
+automatically (see below), so the current version is the latest GitHub release
+`v1.0.<count>`. Production is
 inactive and still blocked on the 12-testers-for-14-days requirement. Releases
 are built with `androidNet/build-release.ps1`, which needs the four
 `BUDGETPILOT_*` keystore environment variables (never committed) and derives the
