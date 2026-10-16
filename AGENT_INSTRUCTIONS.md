@@ -117,8 +117,15 @@ is deployed from `site/` via `.github/workflows/pages.yml` to
 inactive and still blocked on the 12-testers-for-14-days requirement. Releases
 are built with `androidNet/build-release.ps1`, which needs the four
 `BUDGETPILOT_*` keystore environment variables (never committed) and derives the
-version from the Git commit count. Uploading and rolling out is a manual Play
-Console step — never publish on the user's behalf without explicit confirmation.
+version from the Git commit count. `.github/workflows/play-closed-testing.yml`
+runs that script on every push to `main`, uploads the AAB to the Alpha track
+(status from repo variable `PLAY_RELEASE_STATUS`, default `completed`; the latest
+commit subject becomes the de-DE release note) and creates GitHub release
+`v1.0.<count>`. It needs repo secrets `PLAY_SERVICE_ACCOUNT_JSON`,
+`SIGNING_KEYSTORE_BASE64`, `SIGNING_KEY_ALIAS`, `SIGNING_STORE_PASSWORD`,
+`SIGNING_KEY_PASSWORD`; without them it only runs the mobile tests. Promoting to
+production stays a manual Play Console step — never do it on the user's behalf
+without explicit confirmation.
 Keep `Docs/GooglePlay/PLAY_CONSOLE_CHECKLIST.md` in sync with the console.
 
 **CI/CD & auto-update:** `.github/workflows/docker.yml` builds the image on every
