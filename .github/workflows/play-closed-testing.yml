@@ -58,6 +58,8 @@ jobs:
       - name: Build signed bundle
         if: env.HAS_PLAY_SECRETS == 'true'
         shell: pwsh
+        # androidNet/global.json pins the .NET 10 SDK; the repo root pins .NET 8.
+        working-directory: androidNet
         env:
           BUDGETPILOT_KEYSTORE: ${{ runner.temp }}/upload.keystore
           BUDGETPILOT_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
@@ -66,7 +68,7 @@ jobs:
         run: |
           $env:AndroidSdkDirectory = $env:ANDROID_HOME
           $env:JavaSdkDirectory = $env:JAVA_HOME
-          ./androidNet/build-release.ps1 -OutputPath "$env:RUNNER_TEMP/release"
+          ./build-release.ps1 -OutputPath "$env:RUNNER_TEMP/release"
           $aab = Get-ChildItem "$env:RUNNER_TEMP/release" -Filter *-Signed.aab | Select-Object -First 1
           if (-not $aab) { $aab = Get-ChildItem "$env:RUNNER_TEMP/release" -Filter *.aab | Select-Object -First 1 }
           "AAB=$($aab.FullName)" >> $env:GITHUB_ENV
